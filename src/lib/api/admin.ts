@@ -3,7 +3,16 @@
  * (is_staff() policies in supabase/migrations/0001_init.sql). Only used
  * behind AdminGuard, where a Supabase session is guaranteed to exist.
  */
-import type { DesignReview, DesignSpec, DesignStatus, Family, RfqRecord, WeavabilityResult } from '../types';
+import type {
+  DesignReview,
+  DesignSpec,
+  DesignStatus,
+  Family,
+  ProductionSpec,
+  RfqRecord,
+  TechnicalDetails,
+  WeavabilityResult,
+} from '../types';
 import { getSupabase } from '../supabase';
 
 function friendlyError(err: unknown, fallback: string): Error {
@@ -67,6 +76,8 @@ export interface AdminProjectDetail {
   reviews: DesignReview[];
   rfqs: RfqRecord[];
   activity: AdminActivity[];
+  /** Internal production specification, kept separate from the customer's spec. Null when none exists yet. */
+  productionSpec: ProductionSpec | null;
 }
 
 // Raw row shapes (hand-typed — no generated Database types in this project).
@@ -134,6 +145,34 @@ interface RawActivityRow {
   action: string;
   payload: unknown;
   created_at: string;
+}
+
+interface RawProductionSpecRow {
+  id: string;
+  project_id: string;
+  details: unknown;
+  status: 'draft' | 'approved';
+  updated_by: string | null;
+  updated_at: string;
+}
+
+interface RawCapabilityRuleRow {
+  id: string;
+  family: Family;
+  rule_key: string;
+  rule_value: unknown;
+  notes: string | null;
+}
+
+function mapProductionSpec(r: RawProductionSpecRow): ProductionSpec {
+  return {
+    id: r.id,
+    projectId: r.project_id,
+    details: (r.details as TechnicalDetails | null) ?? {},
+    status: r.status,
+    updatedBy: r.updated_by ?? undefined,
+    updatedAt: r.updated_at,
+  };
 }
 
 function mapRfq(r: RawRfqRow, designCode?: string): RfqRecord {
@@ -234,16 +273,18 @@ export async function getProjectDetail(id: string): Promise<AdminProjectDetail |
   if (!projectRaw) return null;
   const project = projectRaw as RawProjectRow;
 
-  const [revisionsRes, reviewsRes, rfqsRes, activityRes] = await Promise.all([
+  const [revisionsRes, reviewsRes, rfqsRes, activityRes, productionSpecRes] = await Promise.all([
     supabase.from('design_revisions').select('*').eq('project_id', id).order('revision_no', { ascending: false }),
     supabase.from('design_reviews').select('*').eq('project_id', id).order('created_at', { ascending: false }),
     supabase.from('rfqs').select('*').eq('project_id', id).order('created_at', { ascending: false }),
     supabase.from('activity_log').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+    supabase.from('production_specs').select('*').eq('project_id', id).maybeSingle(),
   ]);
   if (revisionsRes.error) throw friendlyError(revisionsRes.error, 'Could not load revision history.');
   if (reviewsRes.error) throw friendlyError(reviewsRes.error, 'Could not load review comments.');
   if (rfqsRes.error) throw friendlyError(rfqsRes.error, 'Could not load RFQs.');
   if (activityRes.error) throw friendlyError(activityRes.error, 'Could not load activity log.');
+  if (productionSpecRes.error) throw friendlyError(productionSpecRes.error, 'Could not load the production specification.');
 
   const revisions = (revisionsRes.data ?? []) as RawRevisionRow[];
   const rfqs = (rfqsRes.data ?? []) as RawRfqRow[];
@@ -286,6 +327,7 @@ export async function getProjectDetail(id: string): Promise<AdminProjectDetail |
       payload: (a.payload as Record<string, unknown> | null) ?? {},
       createdAt: a.created_at,
     })),
+    productionSpec: productionSpecRes.data ? mapProductionSpec(productionSpecRes.data as RawProductionSpecRow) : null,
   };
 }
 
@@ -383,4 +425,75 @@ export async function createAdminRevision(
     action: 'revision.created',
     payload: { revisionNo: nextRevisionNo },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Production specification (INTERNAL — never shown to the customer)
+//
+// Stored separately from the customer's design requirement
+// (design_revisions.spec). The technical team's production parameters never
+// overwrite the customer's original spec, and customer choices never
+// automatically become an approved manufacturing spec — this row only
+// changes through an explicit staff save/approve action.
+// ---------------------------------------------------------------------------
+
+export async function getProductionSpec(projectId: string): Promise<ProductionSpec | null> {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from('production_specs')
+    .select('*')
+    .eq('project_id', projectId)
+    .maybeSingle();
+  if (error) throw friendlyError(error, 'Could not load the production specification.');
+  return data ? mapProductionSpec(data as RawProductionSpecRow) : null;
+}
+
+export async function saveProductionSpec(
+  projectId: string,
+  details: TechnicalDetails,
+  status: 'draft' | 'approved',
+  actorEmail: string
+): Promise<ProductionSpec> {
+  const supabase = requireSupabase();
+
+  const { data, error } = await supabase
+    .from('production_specs')
+    .upsert(
+      {
+        project_id: projectId,
+        details,
+        status,
+        updated_by: actorEmail,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'project_id' }
+    )
+    .select('*')
+    .single();
+  if (error) throw friendlyError(error, 'Could not save the production specification.');
+
+  await supabase.from('activity_log').insert({
+    project_id: projectId,
+    actor: actorEmail,
+    action: status === 'approved' ? 'production_spec.approved' : 'production_spec.updated',
+    payload: { status },
+  });
+
+  return mapProductionSpec(data as RawProductionSpecRow);
+}
+
+export async function listCapabilityRules(
+  family?: Family
+): Promise<{ family: string; ruleKey: string; ruleValue: unknown; notes?: string }[]> {
+  const supabase = requireSupabase();
+  let query = supabase.from('capability_rules').select('*');
+  if (family) query = query.eq('family', family);
+  const { data, error } = await query;
+  if (error) throw friendlyError(error, 'Could not load the capability library.');
+  return ((data ?? []) as RawCapabilityRuleRow[]).map((r) => ({
+    family: r.family,
+    ruleKey: r.rule_key,
+    ruleValue: r.rule_value,
+    notes: r.notes ?? undefined,
+  }));
 }

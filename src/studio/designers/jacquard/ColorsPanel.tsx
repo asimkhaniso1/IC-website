@@ -9,6 +9,7 @@ const MAX_COLORS = CAPABILITIES.J.maxColors;
 function countColors(spec: JacquardSpec): number {
   const set = new Set<string>([spec.baseColor.toLowerCase(), spec.fg.toLowerCase()]);
   if (spec.secondaryColor) set.add(spec.secondaryColor.toLowerCase());
+  if (spec.accentColor) set.add(spec.accentColor.toLowerCase());
   if (spec.edgeColor) set.add(spec.edgeColor.toLowerCase());
   for (const c of spec.additionalColors ?? []) set.add(c.toLowerCase());
   return set.size;
@@ -61,6 +62,34 @@ export function ColorsPanel({
             onClick={() => onChange({ ...spec, secondaryColor: '#ffffff' })}
           >
             <Plus className="w-4 h-4" /> Add secondary color
+          </Button>
+        )}
+
+        {spec.accentColor !== undefined ? (
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <ColorField
+                label="Accent color"
+                value={spec.accentColor}
+                onChange={(hex) => onChange({ ...spec, accentColor: hex })}
+              />
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onChange({ ...spec, accentColor: undefined })}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={atLimit}
+            onClick={() => onChange({ ...spec, accentColor: '#facc15' })}
+          >
+            <Plus className="w-4 h-4" /> Add accent color
           </Button>
         )}
 

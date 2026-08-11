@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, FolderOpen, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FolderOpen } from 'lucide-react';
 import { Badge } from '../components/ui/index';
-import { CAPABILITIES, COMPANY, FAMILIES } from '../lib/constants';
+import { COMPANY, FAMILY_BY_CODE, STUDIO_CARDS } from '../lib/constants';
 import { getStorageAdapter } from '../lib/storage/index';
 import { revisionLabel } from '../lib/ids';
 import type { DesignRecord, DesignStatus } from '../lib/types';
@@ -75,61 +75,57 @@ export default function StudioSelect() {
             What would you like to design?
           </motion.h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">
-            Configure a jacquard, woven or knitted elastic to your exact specification, preview it
-            in real time, and send it straight to our technical team for review.
+            Describe the elastic or tape you need in plain language, preview it in real time, and
+            send it straight to our technical team for review — no manufacturing jargon required.
           </p>
         </div>
       </section>
 
-      {/* Family cards */}
+      {/* Studio cards */}
       <section className="mx-auto max-w-5xl px-6 py-12">
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {FAMILIES.map((f, i) => {
-            const cap = CAPABILITIES[f.code];
-            return (
-              <motion.button
-                key={f.slug}
-                type="button"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: i * 0.06 }}
-                onClick={() => navigate(`/studio/${f.slug}`)}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
-              >
-                <div className="relative h-44 overflow-hidden bg-slate-900">
-                  <img
-                    src={f.image}
-                    alt={f.label}
-                    className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <span className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 font-mono text-sm font-bold text-brand-600 shadow">
-                    {f.code}
+        <div className="grid gap-6 sm:grid-cols-2">
+          {STUDIO_CARDS.map((card, i) => (
+            <motion.button
+              key={card.slug}
+              type="button"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: i * 0.06 }}
+              onClick={() => navigate(`/studio/${card.slug}`)}
+              className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="relative h-44 overflow-hidden bg-slate-900">
+                <img
+                  src={card.image}
+                  alt={card.label}
+                  className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
+                />
+                <span className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 font-mono text-sm font-bold text-brand-600 shadow">
+                  {card.code}
+                </span>
+              </div>
+              <div className="flex flex-1 flex-col gap-3 p-5">
+                <h2 className="text-lg font-bold text-slate-900">{card.label}</h2>
+                <p className="flex-1 text-sm leading-relaxed text-slate-500">{card.description}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {card.styles.map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-1 flex items-center justify-end border-t border-slate-100 pt-3">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-brand-600">
+                    Start designing{' '}
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                   </span>
                 </div>
-                <div className="flex flex-1 flex-col gap-2 p-5">
-                  <h2 className="text-lg font-bold text-slate-900">{f.label}</h2>
-                  <p className="flex-1 text-sm leading-relaxed text-slate-500">{f.description}</p>
-                  <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-3">
-                    <span className="font-mono text-xs text-slate-400">
-                      {cap.minWidthMm}–{cap.maxWidthMm} mm width
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-brand-600">
-                      Start designing <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                  </div>
-                </div>
-              </motion.button>
-            );
-          })}
-        </div>
-
-        <div className="mt-6 flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
-          <Info className="mt-0.5 w-4 h-4 shrink-0 text-brand-600" />
-          <p>
-            Looking for a non-elastic woven tape? It is available inside the{' '}
-            <span className="font-semibold text-slate-700">Woven Elastic / Tape</span> studio —
-            switch off the elastic toggle once inside.
-          </p>
+              </div>
+            </motion.button>
+          ))}
         </div>
       </section>
 
@@ -162,7 +158,7 @@ export default function StudioSelect() {
               </thead>
               <tbody>
                 {designs.map((d) => {
-                  const familyMeta = FAMILIES.find((f) => f.code === d.family);
+                  const familyMeta = FAMILY_BY_CODE[d.family];
                   return (
                     <tr
                       key={d.id}

@@ -1,4 +1,5 @@
 import type { DesignerControlsProps, JacquardSpec } from '../../../lib/types';
+import { AdvancedTechnicalPanel } from '../../shared';
 import { ArtworkPanel } from './ArtworkPanel';
 import { ColorsPanel } from './ColorsPanel';
 import { ColorwaysPanel } from './ColorwaysPanel';
@@ -13,6 +14,7 @@ export function Controls({ spec, onChange }: DesignerControlsProps<JacquardSpec>
       <ColorsPanel spec={spec} onChange={onChange} />
       <RepeatPanel spec={spec} onChange={onChange} />
       <ColorwaysPanel spec={spec} onChange={onChange} />
+      <AdvancedTechnicalPanel spec={spec} onChange={onChange} />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import type {
   Feasibility,
   JacquardSpec,
   KnittedSpec,
+  TechnicalDetails,
   WeavabilityResult,
   WovenSpec,
   WovenStripe,
@@ -443,6 +444,12 @@ function drawSpecTable(doc: jsPDF, y: number, spec: DesignSpec): number {
   const widthIn = mmToIn(spec.widthMm).toFixed(2);
   y = kvRow(doc, y, 'Width', `${spec.widthMm.toFixed(1)} mm  (${widthIn} in)`);
   y = kvRow(doc, y, 'Roll Length', `${spec.rollLengthM} m`);
+
+  if (spec.family === 'W' || spec.family === 'K') {
+    const style = spec.family === 'W' ? (spec as WovenSpec).style : (spec as KnittedSpec).style;
+    y = kvRow(doc, y, 'Style', spec.elastic === false ? 'Non-elastic webbing / tape' : style ? capitalize(style) : '—');
+  }
+
   const elasticityLabel = ELASTICITY_CLASSES.find((e) => e.value === spec.elasticityClass)?.label;
   y = kvRow(
     doc,
@@ -452,6 +459,17 @@ function drawSpecTable(doc: jsPDF, y: number, spec: DesignSpec): number {
       ? `Elastic${elasticityLabel ? ` — ${elasticityLabel}` : ''}`
       : 'Non-elastic (rigid tape / webbing)'
   );
+
+  if (spec.elastic) {
+    const stretchValue =
+      spec.elasticityClass === 'custom'
+        ? `Custom — target ${spec.customElongationPct != null ? `${spec.customElongationPct}%` : '—'}`
+        : (elasticityLabel ?? '—');
+    y = kvRow(doc, y, 'Stretch', stretchValue);
+  }
+
+  if (spec.firmness) y = kvRow(doc, y, 'Firmness', capitalize(spec.firmness));
+
   y = kvRow(doc, y, 'Thickness Class', capitalize(spec.thicknessClass));
   if (spec.construction) y = kvRow(doc, y, 'Construction', spec.construction);
   y = kvRow(doc, y, 'Edge Style', capitalize(spec.edgeStyle));
@@ -460,6 +478,7 @@ function drawSpecTable(doc: jsPDF, y: number, spec: DesignSpec): number {
   y = sectionHeader(doc, y, 'Colors');
   y = colorRow(doc, y, 'Base Color', spec.baseColor);
   y = colorRow(doc, y, 'Secondary Color', spec.secondaryColor);
+  y = colorRow(doc, y, 'Accent Color', spec.accentColor);
   y = colorRow(doc, y, 'Edge Color', spec.edgeColor);
   y = additionalColorsRow(doc, y, spec.additionalColors);
 
@@ -501,6 +520,80 @@ function drawSpecTable(doc: jsPDF, y: number, spec: DesignSpec): number {
   }
 
   return y;
+}
+
+// ---------------------------------------------------------------------------
+// Customer-provided technical input (optional, reference only)
+// ---------------------------------------------------------------------------
+
+const TECHNICAL_LABELS: Record<keyof TechnicalDetails, string> = {
+  constructionType: 'Construction Type',
+  yarnType: 'Yarn Type',
+  yarnCount: 'Yarn Count',
+  warpConfig: 'Warp Configuration',
+  weftConfig: 'Weft Configuration',
+  rubberType: 'Rubber Type',
+  rubberConfig: 'Rubber Configuration',
+  elasticEnds: 'Elastic Ends',
+  picksDensity: 'Picks / Density',
+  finishedWidthMm: 'Finished Width (mm)',
+  elongationPct: 'Target Elongation (%)',
+  recoveryPct: 'Recovery (%)',
+  weightPerMeter: 'Weight / Meter',
+  gsm: 'GSM',
+  thicknessMm: 'Thickness (mm)',
+  tolerance: 'Tolerance',
+  machineRef: 'Machine Reference',
+  finishing: 'Finishing',
+  notes: 'Notes',
+};
+
+function drawCustomerTechnicalInput(doc: jsPDF, y: number, technical: TechnicalDetails | undefined): number {
+  if (!technical) return y;
+  const keys = (Object.keys(TECHNICAL_LABELS) as (keyof TechnicalDetails)[]).filter(
+    (k) => k !== 'notes' && (technical[k] ?? '').trim().length > 0
+  );
+  const notes = technical.notes?.trim();
+  if (keys.length === 0 && !notes) return y;
+
+  y = sectionHeader(doc, y, 'Customer-Provided Technical Input (for reference)');
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...SLATE_400);
+  const capLines = doc.splitTextToSize(
+    'Entered by the customer for reference only — not an approved manufacturing parameter.',
+    CONTENT_W
+  ) as string[];
+  y = pageBreakIfNeeded(doc, y, capLines.length * 3 + 6);
+  doc.text(capLines, CONTENT_X, y);
+  y += capLines.length * 3 + 3.5;
+
+  keys.forEach((key) => {
+    y = pageBreakIfNeeded(doc, y, 5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...SLATE_600);
+    const label = `${TECHNICAL_LABELS[key]}: `;
+    doc.text(label, CONTENT_X, y);
+    const labelWidth = doc.getTextWidth(label);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...SLATE_900);
+    const valueLines = doc.splitTextToSize(String(technical[key]), CONTENT_W - labelWidth) as string[];
+    doc.text(valueLines, CONTENT_X + labelWidth, y);
+    y += Math.max(4.2, valueLines.length * 3.6) + 1;
+  });
+
+  if (notes) {
+    y = pageBreakIfNeeded(doc, y, 8);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...SLATE_600);
+    const noteLines = doc.splitTextToSize(`Notes: ${notes}`, CONTENT_W) as string[];
+    doc.text(noteLines, CONTENT_X, y);
+    y += noteLines.length * 3.6 + 1;
+  }
+
+  return y + 4;
 }
 
 // ---------------------------------------------------------------------------
@@ -567,6 +660,63 @@ function drawWeavability(doc: jsPDF, y: number, weav: WeavabilityResult | undefi
   const lines = doc.splitTextToSize(TECHNICAL_REVIEW_DISCLAIMER, CONTENT_W) as string[];
   doc.text(lines, CONTENT_X, y);
   return y + lines.length * 3.2 + 5;
+}
+
+// ---------------------------------------------------------------------------
+// Internal production specification — always blank on the customer PDF.
+// The filled production spec lives only in the admin dashboard
+// (production_specs table); it is never populated here.
+// ---------------------------------------------------------------------------
+
+const PRODUCTION_SPEC_BLANK_FIELDS = [
+  'Construction',
+  'Warp',
+  'Weft',
+  'Elastic Core',
+  'Number of Ends',
+  'Picks / Density',
+  'Target Elongation',
+  'Tolerance',
+  'Machine Reference',
+];
+
+function drawProductionSpecBlank(doc: jsPDF, y: number): number {
+  y = sectionHeader(doc, y, 'Production Specification — Interconverters Internal');
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7.4);
+  doc.setTextColor(...SLATE_500);
+  const noteLines = doc.splitTextToSize(
+    'To be completed by the Interconverters technical team after review. Customer selections above are ' +
+      'requirements, not approved manufacturing parameters.',
+    CONTENT_W
+  ) as string[];
+  y = pageBreakIfNeeded(doc, y, noteLines.length * 3.4 + 8);
+  doc.text(noteLines, CONTENT_X, y);
+  y += noteLines.length * 3.4 + 5;
+
+  const cols = 2;
+  const gap = 8;
+  const colW = (CONTENT_W - gap) / cols;
+  const rowH = 12;
+  const rows = Math.ceil(PRODUCTION_SPEC_BLANK_FIELDS.length / cols);
+  y = pageBreakIfNeeded(doc, y, rows * rowH + 4);
+
+  PRODUCTION_SPEC_BLANK_FIELDS.forEach((label, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = CONTENT_X + col * (colW + gap);
+    const ty = y + row * rowH;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.4);
+    doc.setTextColor(...SLATE_500);
+    doc.text(label.toUpperCase(), x, ty);
+    doc.setDrawColor(...SLATE_300);
+    doc.setLineWidth(0.25);
+    doc.line(x, ty + 6.5, x + colW, ty + 6.5);
+  });
+
+  return y + rows * rowH + 3;
 }
 
 // ---------------------------------------------------------------------------
@@ -670,7 +820,9 @@ export async function generateSpecPdf(rec: DesignRecord, previewPng: string): Pr
   y = drawCustomerBlock(doc, y);
   y = await drawPreview(doc, y, previewPng);
   y = drawSpecTable(doc, y, rec.spec);
+  y = drawCustomerTechnicalInput(doc, y, rec.spec.technical);
   y = drawWeavability(doc, y, rec.weavability);
+  y = drawProductionSpecBlank(doc, y);
   await drawClosing(doc, y, rec);
 
   stampFooters(doc);

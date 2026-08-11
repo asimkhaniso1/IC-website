@@ -1,23 +1,101 @@
-import type {
-  Application,
-  DesignerControlsProps,
-  EdgeStyle,
-  ElasticityClass,
-  ThicknessClass,
-  WovenSpec,
-} from '../../../lib/types';
-import { Button, Field, NumberField, Panel, Select } from '../../../components/ui';
-import { APPLICATIONS, CAPABILITIES, EDGE_STYLES, ELASTICITY_CLASSES, THICKNESS_CLASSES } from '../../../lib/constants';
-import { clamp, displayValue, formatDim, parseToMm } from '../../../lib/units';
+import type { ReactNode } from 'react';
+import type { DesignerControlsProps, EdgeStyle, RibAppearance, WovenSpec, WovenStyle } from '../../../lib/types';
+import { Button, Field, Panel, Select } from '../../../components/ui';
+import { CAPABILITIES, EDGE_STYLES, RIB_APPEARANCES, WOVEN_STYLES } from '../../../lib/constants';
 import { ColorPickerField } from '../../color';
+import {
+  AdvancedTechnicalPanel,
+  ApplicationField,
+  FirmnessField,
+  RollLengthField,
+  StretchField,
+  ThicknessField,
+  WidthField,
+} from '../../shared';
 import { StripeEditor } from './StripeEditor';
+
+/**
+ * Older saved designs may not have `style` set. Resolve it once for display
+ * — never write the fallback back into the spec (only an explicit style
+ * change from the user persists).
+ */
+function resolveStyle(spec: WovenSpec): WovenStyle {
+  return spec.style ?? (spec.stripes.length > 0 ? 'striped' : 'standard');
+}
+
+function StandardSwatch({ base }: { base: string }) {
+  return <div className="h-full w-full" style={{ background: base }} />;
+}
+
+function StripedSwatch({ base, accent }: { base: string; accent: string }) {
+  return (
+    <div className="flex h-full w-full">
+      <div className="h-full flex-[3]" style={{ background: base }} />
+      <div className="h-full flex-1" style={{ background: accent }} />
+      <div className="h-full flex-[4]" style={{ background: base }} />
+      <div className="h-full w-[10%]" style={{ background: accent }} />
+      <div className="h-full flex-[2]" style={{ background: base }} />
+    </div>
+  );
+}
+
+function RibbedSwatch({ base }: { base: string }) {
+  return (
+    <div className="flex h-full w-full flex-col">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex-1" style={{ background: base, opacity: i % 2 === 0 ? 1 : 0.6 }} />
+      ))}
+    </div>
+  );
+}
+
+function StyleCard({
+  label,
+  description,
+  selected,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  description: string;
+  selected: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={selected}
+      className={`flex flex-col items-start gap-2 rounded-lg border p-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+        selected ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white hover:border-slate-300'
+      }`}
+    >
+      <div className="h-8 w-full overflow-hidden rounded-md border border-slate-200">{children}</div>
+      <div>
+        <div className="text-xs font-bold text-slate-700">{label}</div>
+        <div className="text-[11px] leading-snug text-slate-400">{description}</div>
+      </div>
+    </button>
+  );
+}
 
 export function WovenControls({ spec, onChange, disabled }: DesignerControlsProps<WovenSpec>) {
   const caps = CAPABILITIES.W;
+  const style = resolveStyle(spec);
 
-  const setWidth = (v: number) => {
-    const mm = clamp(parseToMm(v, spec.unit), caps.minWidthMm, caps.maxWidthMm);
-    onChange({ ...spec, widthMm: mm });
+  const setStyle = (next: WovenStyle) => {
+    if (next === style) return;
+    // Stripe data is intentionally kept even when switching away from
+    // 'striped' — it just stops rendering until the user switches back.
+    onChange({
+      ...spec,
+      style: next,
+      ribAppearance: next === 'ribbed' ? spec.ribAppearance ?? 'medium' : spec.ribAppearance,
+    });
   };
 
   const toggleElastic = (elastic: boolean) => {
@@ -33,33 +111,33 @@ export function WovenControls({ spec, onChange, disabled }: DesignerControlsProp
     }
   };
 
+  const accentSwatchColor = spec.stripes[0]?.color ?? spec.secondaryColor ?? '#ffffff';
+
   return (
     <div className="flex flex-col gap-4">
+      <Panel title="Style">
+        <div className="grid grid-cols-3 gap-2">
+          {WOVEN_STYLES.map((s) => (
+            <StyleCard
+              key={s.value}
+              label={s.label}
+              description={s.description}
+              selected={style === s.value}
+              onClick={() => setStyle(s.value)}
+              disabled={disabled}
+            >
+              {s.value === 'standard' && <StandardSwatch base={spec.baseColor} />}
+              {s.value === 'striped' && <StripedSwatch base={spec.baseColor} accent={accentSwatchColor} />}
+              {s.value === 'ribbed' && <RibbedSwatch base={spec.baseColor} />}
+            </StyleCard>
+          ))}
+        </div>
+      </Panel>
+
       <Panel title="Fabric">
         <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="Width"
-            tooltip={`Manufacturing range: ${formatDim(caps.minWidthMm, 'mm')} – ${formatDim(caps.maxWidthMm, 'mm')}`}
-          >
-            <NumberField
-              value={displayValue(spec.widthMm, spec.unit)}
-              onValue={setWidth}
-              suffix={spec.unit}
-              min={displayValue(caps.minWidthMm, spec.unit)}
-              max={displayValue(caps.maxWidthMm, spec.unit)}
-              step={spec.unit === 'in' ? 0.05 : 0.5}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Roll length">
-            <NumberField
-              value={spec.rollLengthM}
-              onValue={(v) => onChange({ ...spec, rollLengthM: clamp(v, 1, 10000) })}
-              suffix="m"
-              min={1}
-              disabled={disabled}
-            />
-          </Field>
+          <WidthField spec={spec} onChange={onChange} minMm={caps.minWidthMm} maxMm={caps.maxWidthMm} />
+          <RollLengthField spec={spec} onChange={onChange} />
         </div>
 
         <Field
@@ -88,66 +166,22 @@ export function WovenControls({ spec, onChange, disabled }: DesignerControlsProp
         </Field>
 
         {spec.elastic && (
-          <Field label="Elasticity class" className="mt-3">
-            <Select
-              value={spec.elasticityClass ?? 'medium'}
-              onChange={(e) => onChange({ ...spec, elasticityClass: e.target.value as ElasticityClass })}
-              disabled={disabled}
-            >
-              {ELASTICITY_CLASSES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div className="mt-3">
+            <StretchField spec={spec} onChange={onChange} />
+          </div>
         )}
 
-        <Field label="Thickness" className="mt-3">
-          <Select
-            value={spec.thicknessClass}
-            onChange={(e) => onChange({ ...spec, thicknessClass: e.target.value as ThicknessClass })}
-            disabled={disabled}
-          >
-            {THICKNESS_CLASSES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <div className="mt-3">
+          <FirmnessField spec={spec} onChange={onChange} />
+        </div>
 
-        {spec.elastic && (
-          <Field
-            label="Rubber"
-            className="mt-3"
-            tooltip="Single or double rubber strand construction controls stretch recovery and hand-feel."
-          >
-            <Select
-              value={spec.rubber}
-              onChange={(e) => onChange({ ...spec, rubber: e.target.value as WovenSpec['rubber'] })}
-              disabled={disabled}
-            >
-              <option value="none">None</option>
-              <option value="single">Single rubber</option>
-              <option value="double">Double rubber</option>
-            </Select>
-          </Field>
-        )}
+        <div className="mt-3">
+          <ThicknessField spec={spec} onChange={onChange} />
+        </div>
 
-        <Field label="Application" className="mt-3">
-          <Select
-            value={spec.application}
-            onChange={(e) => onChange({ ...spec, application: e.target.value as Application })}
-            disabled={disabled}
-          >
-            {APPLICATIONS.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <div className="mt-3">
+          <ApplicationField spec={spec} onChange={onChange} />
+        </div>
 
         <div className="grid grid-cols-2 gap-3 mt-3">
           <Field label="Edge style">
@@ -170,10 +204,28 @@ export function WovenControls({ spec, onChange, disabled }: DesignerControlsProp
             allowClear
           />
         </div>
+
+        {spec.elastic && (
+          <Field
+            label="Rubber"
+            className="mt-3"
+            tooltip="Single or double rubber strand construction controls stretch recovery and hand-feel."
+          >
+            <Select
+              value={spec.rubber}
+              onChange={(e) => onChange({ ...spec, rubber: e.target.value as WovenSpec['rubber'] })}
+              disabled={disabled}
+            >
+              <option value="none">None</option>
+              <option value="single">Single rubber</option>
+              <option value="double">Double rubber</option>
+            </Select>
+          </Field>
+        )}
       </Panel>
 
       <Panel title="Colors">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <ColorPickerField
             label="Base color"
             value={spec.baseColor}
@@ -185,12 +237,40 @@ export function WovenControls({ spec, onChange, disabled }: DesignerControlsProp
             onChange={(hex) => onChange({ ...spec, secondaryColor: hex })}
             allowClear
           />
+          <ColorPickerField
+            label="Accent color"
+            value={spec.accentColor}
+            onChange={(hex) => onChange({ ...spec, accentColor: hex })}
+            allowClear
+          />
         </div>
       </Panel>
 
-      <Panel title="Stripes">
-        <StripeEditor spec={spec} onChange={onChange} disabled={disabled} />
-      </Panel>
+      {style === 'striped' && (
+        <Panel title="Stripes">
+          <StripeEditor spec={spec} onChange={onChange} disabled={disabled} />
+        </Panel>
+      )}
+
+      {style === 'ribbed' && (
+        <Panel title="Rib Appearance">
+          <div className="grid grid-cols-3 gap-2">
+            {RIB_APPEARANCES.map((r) => (
+              <Button
+                key={r.value}
+                variant={(spec.ribAppearance ?? 'medium') === r.value ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => onChange({ ...spec, ribAppearance: r.value as RibAppearance })}
+                disabled={disabled}
+              >
+                {r.label}
+              </Button>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      <AdvancedTechnicalPanel spec={spec} onChange={onChange} />
     </div>
   );
 }

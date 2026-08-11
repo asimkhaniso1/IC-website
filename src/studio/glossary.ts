@@ -28,4 +28,12 @@ export const GLOSSARY: Record<string, string> = {
     'How strongly your motif color stands out against the base fabric color. Low contrast can make a woven pattern look faint or hard to read once produced.',
   jacquardArtwork:
     'Upload a logo/artwork image or add text to be woven directly into the elastic. Fine detail and very small text can be lost in weaving — keep it bold and simple.',
+  firmness:
+    'How stiff or soft the fabric feels in hand. Soft suits next-to-skin uses; firm suits structured waistbands and industrial straps. This is a feel preference, separate from stretch.',
+  ribbedStyle:
+    'A corded or ribbed surface texture running along the fabric, giving extra grip and a textured look compared to a smooth standard finish.',
+  webbingVsElastic:
+    'Webbing / tape is a rigid, non-stretch woven strip used for straps, bag handles and industrial applications. Elastic fabrics are built to stretch and recover — choose the elastic studios for waistbands and stretch trims, or Non-Elastic Webbing / Tape for rigid straps.',
+  advancedTechnical:
+    'These are production parameters — leave blank unless you have specific requirements. Our technical team determines the final manufacturing construction regardless of what is entered here.',
 };

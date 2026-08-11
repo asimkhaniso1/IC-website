@@ -13,6 +13,8 @@
 import { useId, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import type { DesignSpec, JacquardSpec, PreviewHandle, PreviewMode, PreviewProps } from '../../lib/types';
+import { STRETCH_DISCLAIMER } from '../../lib/constants';
+import { clamp } from '../../lib/units';
 import { FabricStrip } from './FabricStrip';
 import { RulerGrid } from './RulerGrid';
 import { getSilhouette } from './modes/silhouettes';
@@ -24,6 +26,14 @@ const RIGHT_PAD = 8;
 
 /** Max simulated elongation per elasticity class (upper bound of the class range). */
 const MAX_STRETCH: Record<string, number> = { low: 50, medium: 120, high: 200 };
+
+/** Resolves the simulation ceiling, including the 'custom' elasticity class. */
+function resolveMaxStretch(spec: DesignSpec): number {
+  if (spec.elasticityClass === 'custom') {
+    return clamp(spec.customElongationPct ?? 100, 10, 300);
+  }
+  return MAX_STRETCH[spec.elasticityClass ?? ''] ?? 100;
+}
 
 function jacquardCycleMm(spec: DesignSpec): number {
   if (spec.family !== 'J') return 0;
@@ -62,7 +72,7 @@ export default function FabricPreview({
   const [zoom, setZoom] = useState(1);
   const [stretchPct, setStretchPct] = useState(0);
 
-  const maxStretch = MAX_STRETCH[spec.elasticityClass ?? ''] ?? 100;
+  const maxStretch = resolveMaxStretch(spec);
   const stretchActive =
     spec.elastic && (mode === 'flat' || mode === 'repeat') && stretchPct > 0;
   // Longitudinal stretch factor and the resulting width contraction
@@ -325,7 +335,7 @@ export default function FabricPreview({
         {mode === 'application'
           ? `Illustrative ${spec.application.toLowerCase()} mockup — approximate scale, not dimensionally exact`
           : stretchActive
-            ? `Simulated at +${Math.min(stretchPct, maxStretch)}% elongation — visual approximation, actual stretch behaviour depends on construction`
+            ? `Simulated at +${Math.min(stretchPct, maxStretch)}% elongation. ${STRETCH_DISCLAIMER}`
             : 'Approximate scale preview — not dimensionally exact'}
       </p>
     </div>

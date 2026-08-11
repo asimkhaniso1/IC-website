@@ -10,10 +10,12 @@ function createDefaultSpec(): KnittedSpec {
     rollLengthM: 100,
     elastic: true,
     elasticityClass: 'medium',
+    firmness: 'soft',
     thicknessClass: 'standard',
     baseColor: '#f8fafc',
     edgeStyle: 'straight',
     application: 'Underwear',
+    style: 'standard',
     rubber: true,
   };
 }

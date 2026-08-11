@@ -10,10 +10,12 @@ function createDefaultSpec(): WovenSpec {
     rollLengthM: 50,
     elastic: true,
     elasticityClass: 'medium',
+    firmness: 'medium',
     thicknessClass: 'standard',
     baseColor: '#0f172a',
     edgeStyle: 'straight',
     application: 'Waistband',
+    style: 'striped',
     stripes: [{ id: 'stripe-default', color: '#ffffff', widthMm: 3, offsetMm: 0 }],
     rubber: 'single',
   };

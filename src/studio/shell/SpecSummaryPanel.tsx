@@ -1,10 +1,48 @@
 import type { ReactNode } from 'react';
 import { Badge, ColorSwatch, Field, Panel, Tooltip } from '../../components/ui/index';
-import { FAMILY_BY_CODE, TECHNICAL_REVIEW_DISCLAIMER } from '../../lib/constants';
+import { ELASTICITY_CLASSES, FAMILY_BY_CODE, TECHNICAL_REVIEW_DISCLAIMER } from '../../lib/constants';
 import { formatDim } from '../../lib/units';
-import type { DesignSpec, JacquardSpec, Unit, WeavabilityResult, WovenSpec } from '../../lib/types';
+import type {
+  DesignSpec,
+  JacquardSpec,
+  KnittedSpec,
+  TechnicalDetails,
+  ThicknessClass,
+  Unit,
+  WeavabilityResult,
+  WovenSpec,
+} from '../../lib/types';
 import { GLOSSARY } from '../glossary';
 import { FeasibilityBadge } from '../weavability/FeasibilityBadge';
+
+const THICKNESS_DISPLAY: Record<ThicknessClass, string> = {
+  light: 'Light',
+  standard: 'Medium',
+  heavy: 'Heavy',
+};
+
+function capitalize(s: string): string {
+  return s.length ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
+function stretchLabel(spec: DesignSpec): string {
+  if (!spec.elastic) return 'Non-elastic';
+  const cls = spec.elasticityClass ?? 'medium';
+  if (cls === 'custom') return `Custom — ${spec.customElongationPct ?? '—'}%`;
+  return ELASTICITY_CLASSES.find((c) => c.value === cls)?.label ?? capitalize(cls);
+}
+
+function styleLabel(spec: DesignSpec): string | null {
+  if (spec.family !== 'W' && spec.family !== 'K') return null;
+  if (!spec.elastic) return 'Non-elastic tape';
+  const style = (spec as WovenSpec | KnittedSpec).style ?? 'standard';
+  return capitalize(style);
+}
+
+function countTechnicalFilled(t?: TechnicalDetails): number {
+  if (!t) return 0;
+  return Object.values(t).filter((v) => typeof v === 'string' && v.trim() !== '').length;
+}
 
 function ColorRow({ label, hex }: { label: string; hex?: string }) {
   if (!hex) return null;
@@ -39,6 +77,8 @@ export function SpecSummaryPanel({
 }) {
   const familyMeta = FAMILY_BY_CODE[spec.family];
   const setUnit = (unit: Unit) => onSpecChange({ ...spec, unit });
+  const style = styleLabel(spec);
+  const technicalFilled = countTechnicalFilled(spec.technical);
 
   return (
     <div className="flex flex-col gap-4">
@@ -70,11 +110,10 @@ export function SpecSummaryPanel({
           </Field>
 
           <SummaryRow label="Roll length" value={`${spec.rollLengthM} m`} />
-          <SummaryRow
-            label="Elasticity"
-            value={spec.elastic ? spec.elasticityClass ?? 'medium' : 'Non-elastic'}
-          />
-          <SummaryRow label="Thickness" value={spec.thicknessClass} />
+          {style && <SummaryRow label="Style" value={style} />}
+          <SummaryRow label="Stretch" value={stretchLabel(spec)} />
+          {spec.firmness && <SummaryRow label="Firmness" value={capitalize(spec.firmness)} />}
+          <SummaryRow label="Thickness" value={THICKNESS_DISPLAY[spec.thicknessClass]} />
           <SummaryRow label="Edge style" value={spec.edgeStyle} />
 
           {spec.family === 'J' && (
@@ -90,6 +129,13 @@ export function SpecSummaryPanel({
               <SummaryRow label="Artwork items" value={(spec as JacquardSpec).artwork.length} />
             </>
           )}
+
+          {technicalFilled > 0 && (
+            <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs text-slate-400">
+              <span>Advanced details provided</span>
+              <span>{technicalFilled} fields</span>
+            </div>
+          )}
         </div>
       </Panel>
 
@@ -98,6 +144,7 @@ export function SpecSummaryPanel({
           <ColorRow label="Base" hex={spec.baseColor} />
           {spec.family === 'J' && <ColorRow label="Motif" hex={(spec as JacquardSpec).fg} />}
           <ColorRow label="Secondary" hex={spec.secondaryColor} />
+          <ColorRow label="Accent" hex={spec.accentColor} />
           <ColorRow label="Edge" hex={spec.edgeColor} />
           {spec.family === 'W' &&
             (spec as WovenSpec).stripes.map((s, i) => (
@@ -151,7 +198,9 @@ export function SpecSummaryPanel({
         </div>
       </Panel>
 
-      <p className="px-1 text-[11px] leading-relaxed text-slate-400">{TECHNICAL_REVIEW_DISCLAIMER}</p>
+      <p className="px-1 text-[11px] leading-relaxed text-slate-400" title={GLOSSARY.advancedTechnical}>
+        {TECHNICAL_REVIEW_DISCLAIMER}
+      </p>
     </div>
   );
 }

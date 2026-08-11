@@ -24,6 +24,7 @@ const MIN_CONTRAST = 2.5;
 function collectColors(spec: DesignSpec): string[] {
   const colors: string[] = [spec.baseColor];
   if (spec.secondaryColor) colors.push(spec.secondaryColor);
+  if (spec.accentColor) colors.push(spec.accentColor);
   if (spec.edgeColor) colors.push(spec.edgeColor);
   if (spec.additionalColors) colors.push(...spec.additionalColors);
 
@@ -203,12 +204,27 @@ function checkWoven(spec: WovenSpec, issues: WeavabilityIssue[]): void {
   }
 }
 
+function checkElongation(spec: DesignSpec, issues: WeavabilityIssue[]): void {
+  if (!spec.elastic || spec.elasticityClass !== 'custom') return;
+  if ((spec.customElongationPct ?? 0) > 200) {
+    issues.push({
+      code: 'elongation-high',
+      severity: 'warn',
+      message: 'Requested elongation exceeds our standard range — technical review required.',
+      hint: 'Our technical team will confirm whether this target elongation is achievable with your chosen construction.',
+    });
+  }
+}
+
 export function checkWeavability(spec: DesignSpec): WeavabilityResult {
   const issues: WeavabilityIssue[] = [];
 
   checkColorCount(spec, issues);
   checkWidth(spec, issues);
+  checkElongation(spec, issues);
 
+  // firmness, style and other optional customer-friendly fields are never
+  // required — a spec without them remains fully valid.
   if (spec.family === 'J') checkJacquard(spec as JacquardSpec, issues);
   if (spec.family === 'W') checkWoven(spec as WovenSpec, issues);
 

@@ -14,6 +14,7 @@ import { AdminGuard } from '../../auth/AdminGuard';
 import { useSession } from '../../auth/useSession';
 import { AdminChrome } from './components/AdminChrome';
 import { STATUS_TONE } from './components/statusTone';
+import { ProductionSpecPanel } from './components/ProductionSpecPanel';
 import {
   addComment,
   createAdminRevision,
@@ -367,6 +368,15 @@ function DetailBody({ id }: { id: string }) {
             <SpecPanel spec={project.spec} />
           </Panel>
 
+          <ProductionSpecPanel
+            projectId={project.id}
+            family={project.family}
+            customerTechnical={project.spec?.technical}
+            productionSpec={detail.productionSpec}
+            actorEmail={actorEmail}
+            onSaved={() => setRefreshKey((k) => k + 1)}
+          />
+
           <Panel title="Weavability / Manufacturability">
             {project.weavability ? (
               <div className="flex flex-col gap-2">
@@ -459,10 +469,12 @@ function DetailBody({ id }: { id: string }) {
           <Panel
             title="Revision History"
             action={
-              <Button variant="secondary" size="sm" onClick={openRevisionModal}>
-                <Plus className="w-3.5 h-3.5" />
-                New Revision
-              </Button>
+              <Tooltip text="Edits the customer's design requirement JSON and adds a new revision. This is separate from the internal production specification below.">
+                <Button variant="secondary" size="sm" onClick={openRevisionModal}>
+                  <Plus className="w-3.5 h-3.5" />
+                  Revise Customer Design
+                </Button>
+              </Tooltip>
             }
           >
             <ul className="flex flex-col gap-2">
@@ -509,11 +521,12 @@ function DetailBody({ id }: { id: string }) {
         </div>
       </div>
 
-      <Modal open={revOpen} onClose={() => setRevOpen(false)} title="Create Technical Revision" wide>
+      <Modal open={revOpen} onClose={() => setRevOpen(false)} title="Revise Customer Design (new revision)" wide>
         <div className="flex flex-col gap-4">
           <p className="text-xs text-slate-400 italic">
-            Full technical editor comes in Phase 2 — for now, edit the raw specification JSON directly. The family
-            must remain <span className="font-mono">"{project.family}"</span>.
+            This edits the CUSTOMER's design requirement JSON and creates a new revision of it — it is not the
+            internal production specification (see the Production Specification panel above). The family must
+            remain <span className="font-mono">"{project.family}"</span>.
           </p>
           <Field label="Spec JSON" htmlFor="rev-spec">
             <textarea

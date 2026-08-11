@@ -25,9 +25,31 @@ import { TopBar } from '../studio/shell/TopBar';
 import { useDesignHistory } from '../studio/shell/useDesignHistory';
 import { checkWeavability } from '../studio/weavability/rules';
 
-type FamilySlug = 'jacquard' | 'woven' | 'knitted';
+type FamilySlug = 'jacquard' | 'woven' | 'knitted' | 'webbing';
 
-function createDefaultSpecFor(code: Family): DesignSpec {
+interface FamilyMeta {
+  code: Family;
+  slug: FamilySlug;
+  label: string;
+}
+
+/**
+ * Resolves route slug -> family metadata. 'webbing' is not part of the
+ * frozen FAMILY_BY_SLUG map (family codes stay J/W/K) — it mounts the woven
+ * designer module preset to non-elastic, so it is resolved locally here.
+ */
+function resolveFamilyMeta(slug: string | undefined): FamilyMeta | undefined {
+  if (!slug) return undefined;
+  if (slug === 'webbing') {
+    return { code: 'W', slug: 'webbing', label: 'Non-Elastic Webbing / Tape' };
+  }
+  const meta = FAMILY_BY_SLUG[slug];
+  if (!meta) return undefined;
+  return { code: meta.code, slug: meta.slug as FamilySlug, label: meta.label };
+}
+
+/** The base module default for a family — used to forward-compat-merge older saved specs. */
+function baseModuleDefaultFor(code: Family): DesignSpec {
   switch (code) {
     case 'J':
       return jacquardDesigner.createDefaultSpec();
@@ -35,6 +57,25 @@ function createDefaultSpecFor(code: Family): DesignSpec {
       return wovenDesigner.createDefaultSpec();
     case 'K':
       return knittedDesigner.createDefaultSpec();
+  }
+}
+
+/** Default spec for a brand-new design in this route slug. */
+function createDefaultSpecFor(slug: FamilySlug): DesignSpec {
+  switch (slug) {
+    case 'jacquard':
+      return jacquardDesigner.createDefaultSpec();
+    case 'woven':
+      return wovenDesigner.createDefaultSpec();
+    case 'knitted':
+      return knittedDesigner.createDefaultSpec();
+    case 'webbing':
+      return {
+        ...wovenDesigner.createDefaultSpec(),
+        elastic: false,
+        style: 'standard',
+        name: 'Untitled Webbing / Tape',
+      };
   }
 }
 
@@ -47,7 +88,7 @@ const MODES: { value: PreviewMode; label: string }[] = [
 
 export default function DesignerPage() {
   const { family, id } = useParams<{ family: string; id?: string }>();
-  const familyMeta = family ? FAMILY_BY_SLUG[family] : undefined;
+  const familyMeta = resolveFamilyMeta(family);
 
   const [loadState, setLoadState] = useState<{
     status: 'loading' | 'ready';
@@ -64,12 +105,16 @@ export default function DesignerPage() {
         const rec = await getStorageAdapter().getDesign(id);
         if (cancelled) return;
         if (rec && rec.family === familyMeta.code) {
-          setLoadState({ status: 'ready', spec: rec.spec, record: rec });
+          // Merge over the module's defaults so older saved specs pick up
+          // new optional fields (style, firmness, technical, …) without
+          // crashing.
+          const merged = { ...baseModuleDefaultFor(rec.family), ...rec.spec } as DesignSpec;
+          setLoadState({ status: 'ready', spec: merged, record: rec });
           return;
         }
       }
       if (cancelled) return;
-      setLoadState({ status: 'ready', spec: createDefaultSpecFor(familyMeta.code), record: null });
+      setLoadState({ status: 'ready', spec: createDefaultSpecFor(familyMeta.slug), record: null });
     })();
     return () => {
       cancelled = true;
@@ -94,7 +139,7 @@ export default function DesignerPage() {
       <DesignerWorkspace
         familyCode={familyMeta.code}
         familyLabel={familyMeta.label}
-        familySlug={familyMeta.slug as FamilySlug}
+        familySlug={familyMeta.slug}
         initialSpec={loadState.spec}
         initialRecord={loadState.record ?? null}
       />
@@ -103,7 +148,6 @@ export default function DesignerPage() {
 }
 
 function DesignerWorkspace({
-  familyCode,
   familyLabel,
   familySlug,
   initialSpec,
@@ -144,17 +188,18 @@ function DesignerWorkspace({
           redo={redo}
           canUndo={canUndo}
           canRedo={canRedo}
-          onReset={() => replace(createDefaultSpecFor(familyCode))}
+          onReset={() => replace(createDefaultSpecFor(familySlug))}
           previewRef={previewRef}
         />
       }
       controls={
         familySlug === 'jacquard' ? (
           <jacquardDesigner.Controls spec={spec as JacquardSpec} onChange={setSpec} />
-        ) : familySlug === 'woven' ? (
-          <wovenDesigner.Controls spec={spec as WovenSpec} onChange={setSpec} />
-        ) : (
+        ) : familySlug === 'knitted' ? (
           <knittedDesigner.Controls spec={spec as KnittedSpec} onChange={setSpec} />
+        ) : (
+          // 'woven' and 'webbing' both mount the woven designer module.
+          <wovenDesigner.Controls spec={spec as WovenSpec} onChange={setSpec} />
         )
       }
       preview={
