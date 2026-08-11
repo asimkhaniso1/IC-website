@@ -4,6 +4,18 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Interconverters brand palette (brand-600 = corporate blue #004A99) */
+  --color-brand-50: #eaf2fb;
+  --color-brand-100: #d0e2f6;
+  --color-brand-200: #a2c5ec;
+  --color-brand-300: #6fa4e0;
+  --color-brand-400: #3d82d3;
+  --color-brand-500: #1663b6;
+  --color-brand-600: #004A99;
+  --color-brand-700: #003d7f;
+  --color-brand-800: #003065;
+  --color-brand-900: #022449;
 }
 
 @layer base {
