@@ -80,7 +80,7 @@ export function TopBar({
     setPdfBusy(true);
     try {
       const rec = record ?? (await persist());
-      const png = await previewRef.current?.toPngDataUrl(4);
+      const png = await previewRef.current?.toPngDataUrl(3);
       if (!png) throw new Error('Preview is not ready yet — please try again.');
       const blob = await generateSpecPdf(rec, png);
       const url = URL.createObjectURL(blob);
@@ -101,7 +101,7 @@ export function TopBar({
   const handleRfq = async () => {
     try {
       const rec = record ?? (await persist());
-      const png = await previewRef.current?.toPngDataUrl(4);
+      const png = await previewRef.current?.toPngDataUrl(3);
       setRfqPreviewPng(png);
       setRfqDesign(rec);
     } catch (e) {

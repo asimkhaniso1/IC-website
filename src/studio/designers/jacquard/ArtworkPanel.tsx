@@ -38,6 +38,56 @@ function loadImageSize(dataUrl: string): Promise<{ width: number; height: number
   });
 }
 
+/**
+ * Downscale raster artwork to a manageable size and optionally knock out the
+ * white background (common on JPG logos, which have no alpha channel) so the
+ * motif blends into the woven fabric instead of sitting in a white box.
+ * Near-white pixels become transparent with a feathered falloff.
+ */
+async function processRasterArtwork(
+  dataUrl: string,
+  removeWhiteBg: boolean,
+  maxDim = 1024
+): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('Could not decode the image.'));
+    el.src = dataUrl;
+  });
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return dataUrl;
+  const scale = Math.min(1, maxDim / Math.max(w, h));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(w * scale));
+  canvas.height = Math.max(1, Math.round(h * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  if (removeWhiteBg) {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const px = imageData.data;
+    // Feather between these luma-ish bounds: fully opaque below LO, fully
+    // transparent above HI.
+    const LO = 228;
+    const HI = 248;
+    for (let i = 0; i < px.length; i += 4) {
+      const min = Math.min(px[i], px[i + 1], px[i + 2]);
+      if (min >= HI) {
+        px[i + 3] = 0;
+      } else if (min > LO) {
+        const t = (min - LO) / (HI - LO);
+        px[i + 3] = Math.min(px[i + 3], Math.round((1 - t) * 255));
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  return canvas.toDataURL('image/png');
+}
+
 export function ArtworkPanel({
   spec,
   onChange,
@@ -48,6 +98,7 @@ export function ArtworkPanel({
   const fileRef = useRef<HTMLInputElement>(null);
   const [activeId, setActiveId] = useState<string | null>(spec.artwork[0]?.id ?? null);
   const [lockAspect, setLockAspect] = useState<Record<string, boolean>>({});
+  const [removeWhiteBg, setRemoveWhiteBg] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const active = spec.artwork.find((a) => a.id === activeId) ?? null;
@@ -78,7 +129,14 @@ export function ArtworkPanel({
       setError(`File is too large (max ${(MAX_UPLOAD_BYTES / (1024 * 1024)).toFixed(0)} MB).`);
       return;
     }
-    const dataUrl = await readFileAsDataUrl(file);
+    let dataUrl = await readFileAsDataUrl(file);
+    if (file.type === 'image/png' || file.type === 'image/jpeg') {
+      try {
+        dataUrl = await processRasterArtwork(dataUrl, removeWhiteBg);
+      } catch {
+        /* fall back to the raw upload */
+      }
+    }
     const { width, height } = await loadImageSize(dataUrl);
     const aspect = width > 0 ? height / width : 1;
     const widthMm = spec.widthMm * 0.6;
@@ -153,6 +211,15 @@ export function ArtworkPanel({
             <TypeIcon className="w-4 h-4" /> Add Text
           </Button>
         </div>
+        <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+          <input
+            type="checkbox"
+            checked={removeWhiteBg}
+            onChange={(e) => setRemoveWhiteBg(e.target.checked)}
+            className="accent-brand-600"
+          />
+          Remove white background on upload (recommended for JPG logos)
+        </label>
         {error && <p className="text-xs font-medium text-red-600">{error}</p>}
 
         {spec.artwork.length > 0 && (

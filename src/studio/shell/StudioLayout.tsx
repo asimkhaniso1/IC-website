@@ -23,16 +23,16 @@ export function StudioLayout({
   const [tab, setTab] = useState<Tab>('preview');
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-100">
       {topBar}
 
       {/* Desktop: fixed 3-panel workspace */}
-      <div className="hidden lg:grid flex-1 lg:grid-cols-[320px_1fr_300px] overflow-hidden">
+      <div className="hidden lg:grid flex-1 min-h-0 lg:grid-cols-[320px_1fr_300px] overflow-hidden">
         <aside className="overflow-y-auto border-r border-slate-200 bg-white p-4">
           <div className="flex flex-col gap-4">{controls}</div>
         </aside>
         <main
-          className="relative overflow-y-auto bg-slate-100 p-6"
+          className="relative flex min-h-0 flex-col overflow-hidden bg-slate-100 p-6"
           style={{
             backgroundImage:
               'linear-gradient(to right, rgba(15,23,42,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.05) 1px, transparent 1px)',
@@ -47,7 +47,7 @@ export function StudioLayout({
       </div>
 
       {/* Tablet/mobile: tabbed single panel */}
-      <div className="flex flex-1 flex-col overflow-hidden lg:hidden">
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden lg:hidden">
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-800">
           For precise logo placement we recommend desktop or tablet.
         </div>

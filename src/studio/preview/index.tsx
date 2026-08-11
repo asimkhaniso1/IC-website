@@ -10,7 +10,8 @@
  * The signature (PreviewProps / PreviewHandle) is the frozen contract and is
  * unchanged from the placeholder this file replaces.
  */
-import { useId, useImperativeHandle, useRef, type ReactNode } from 'react';
+import { useId, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
+import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import type { DesignSpec, JacquardSpec, PreviewHandle, PreviewMode, PreviewProps } from '../../lib/types';
 import { FabricStrip } from './FabricStrip';
 import { RulerGrid } from './RulerGrid';
@@ -57,6 +58,7 @@ export default function FabricPreview({
 }: PreviewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const idPrefix = `fp-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const [zoom, setZoom] = useState(1);
 
   useImperativeHandle(
     previewRef,
@@ -169,18 +171,71 @@ export default function FabricPreview({
     );
   }
 
+  // For narrow strips the fit-width rendering can be a hairline — boost the
+  // default so the fabric always occupies a sensible share of the canvas.
+  const aspect = stageH / stageW;
+  const autoBoost = aspect < 0.14 ? Math.min(3, 0.18 / Math.max(aspect, 0.02)) : 1;
+  const effectiveZoom = zoom * autoBoost;
+
+  const zoomIn = () => setZoom((z) => Math.min(8, z * 1.4));
+  const zoomOut = () => setZoom((z) => Math.max(0.4, z / 1.4));
+
   return (
-    <div className={`flex flex-col items-center gap-1.5 ${className}`}>
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${stageW} ${stageH}`}
-        className="w-full"
-        style={{ maxHeight: '60vh' }}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {content}
-      </svg>
-      <p className="text-[11px] text-slate-400 italic">Approximate scale preview — not dimensionally exact</p>
+    <div className={`relative flex min-h-0 flex-1 flex-col gap-1.5 ${className}`}>
+      {/* Zoom controls */}
+      <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-sm">
+        <button
+          type="button"
+          onClick={zoomOut}
+          className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+          aria-label="Zoom out"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </button>
+        <span className="min-w-11 text-center font-mono text-[11px] text-slate-500">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={zoomIn}
+          className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+          aria-label="Zoom in"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom(1)}
+          className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+          aria-label="Fit to view"
+          title="Fit to view"
+        >
+          <Maximize2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${stageW} ${stageH}`}
+          style={{
+            width: `${effectiveZoom * 100}%`,
+            minWidth: effectiveZoom > 1 ? `${effectiveZoom * 100}%` : undefined,
+            aspectRatio: `${stageW} / ${stageH}`,
+            maxHeight: effectiveZoom <= 1 ? '100%' : undefined,
+            margin: 'auto',
+            flexShrink: 0,
+          }}
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {content}
+        </svg>
+      </div>
+      <p className="shrink-0 text-center text-[11px] italic text-slate-400">
+        {mode === 'application'
+          ? `Illustrative ${spec.application.toLowerCase()} mockup — approximate scale, not dimensionally exact`
+          : 'Approximate scale preview — not dimensionally exact'}
+      </p>
     </div>
   );
 }

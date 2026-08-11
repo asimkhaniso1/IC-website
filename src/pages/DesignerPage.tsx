@@ -158,7 +158,7 @@ function DesignerWorkspace({
         )
       }
       preview={
-        <div className="flex h-full flex-col gap-4">
+        <div className="flex h-full min-h-0 flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex rounded-lg border border-slate-200 bg-white p-1">
               {MODES.map((m) => (
@@ -191,7 +191,7 @@ function DesignerWorkspace({
               </Button>
             </div>
           </div>
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex min-h-0 flex-1">
             <FabricPreview
               spec={spec}
               mode={mode}

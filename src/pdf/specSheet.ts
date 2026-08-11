@@ -226,6 +226,33 @@ function imageFormatFor(dataUrl: string): 'PNG' | 'JPEG' {
   return dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg') ? 'JPEG' : 'PNG';
 }
 
+/**
+ * Re-encode an image data URL as a bounded-size JPEG on a white background.
+ * Keeps the PDF small — full-resolution PNG previews were inflating files
+ * to many megabytes.
+ */
+async function toCompactJpeg(dataUrl: string, maxDim = 1400, quality = 0.82): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('image load failed'));
+    el.src = dataUrl;
+  });
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (!w || !h) return dataUrl;
+  const scale = Math.min(1, maxDim / Math.max(w, h));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(w * scale));
+  canvas.height = Math.max(1, Math.round(h * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
 // ---------------------------------------------------------------------------
 // Header / meta / customer / preview blocks
 // ---------------------------------------------------------------------------
@@ -343,13 +370,14 @@ async function drawPreview(doc: jsPDF, y: number, previewPng: string): Promise<n
 
   if (previewPng) {
     try {
-      const dims = await loadImageDims(previewPng);
+      const jpeg = await toCompactJpeg(previewPng);
+      const dims = await loadImageDims(jpeg);
       const fitScale = Math.min(maxW / dims.width, maxH / dims.height);
       const imgW = dims.width * fitScale;
       const imgH = dims.height * fitScale;
       const ix = boxX + (maxW - imgW) / 2;
       const iy = y + (maxH - imgH) / 2;
-      doc.addImage(previewPng, imageFormatFor(previewPng), ix, iy, imgW, imgH);
+      doc.addImage(jpeg, 'JPEG', ix, iy, imgW, imgH);
     } catch {
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(9);
@@ -582,7 +610,7 @@ function stampFooters(doc: jsPDF): void {
 // ---------------------------------------------------------------------------
 
 export async function generateSpecPdf(rec: DesignRecord, previewPng: string): Promise<Blob> {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
 
   let y = await drawHeader(doc);
   y = drawMetaGrid(doc, y, rec);
