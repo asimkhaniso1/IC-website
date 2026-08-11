@@ -4,6 +4,7 @@
  */
 import { jsPDF } from 'jspdf';
 import type {
+  AiReviewResult,
   ArtworkItem,
   DesignRecord,
   DesignSpec,
@@ -451,22 +452,12 @@ function drawSpecTable(doc: jsPDF, y: number, spec: DesignSpec): number {
   }
 
   const elasticityLabel = ELASTICITY_CLASSES.find((e) => e.value === spec.elasticityClass)?.label;
-  y = kvRow(
-    doc,
-    y,
-    'Elasticity',
-    spec.elastic
-      ? `Elastic${elasticityLabel ? ` — ${elasticityLabel}` : ''}`
-      : 'Non-elastic (rigid tape / webbing)'
-  );
-
-  if (spec.elastic) {
-    const stretchValue =
-      spec.elasticityClass === 'custom'
-        ? `Custom — target ${spec.customElongationPct != null ? `${spec.customElongationPct}%` : '—'}`
-        : (elasticityLabel ?? '—');
-    y = kvRow(doc, y, 'Stretch', stretchValue);
-  }
+  const stretchValue = !spec.elastic
+    ? 'Non-elastic (rigid tape / webbing)'
+    : spec.elasticityClass === 'custom'
+      ? `Elastic — custom, target ${spec.customElongationPct != null ? `${spec.customElongationPct}%` : '—'}`
+      : `Elastic${elasticityLabel ? ` — ${elasticityLabel}` : ''}`;
+  y = kvRow(doc, y, 'Stretch', stretchValue);
 
   if (spec.firmness) y = kvRow(doc, y, 'Firmness', capitalize(spec.firmness));
 
@@ -820,20 +811,128 @@ function stampFooters(doc: jsPDF): void {
 // Entry point
 // ---------------------------------------------------------------------------
 
-export async function generateSpecPdf(rec: DesignRecord, previewPng: string): Promise<Blob> {
+export interface SpecPdfExtras {
+  /** Latest AI advisory review — printed as a clearly-labeled advisory subsection. */
+  aiReview?: AiReviewResult;
+  /** Latest AI photorealistic render (data URL) — printed as an indicative visualization. */
+  aiPhoto?: string;
+}
+
+export async function generateSpecPdf(
+  rec: DesignRecord,
+  previewPng: string,
+  extras?: SpecPdfExtras
+): Promise<Blob> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
 
   let y = await drawHeader(doc);
   y = drawMetaGrid(doc, y, rec);
   y = drawCustomerBlock(doc, y);
   y = await drawPreview(doc, y, previewPng);
+  if (extras?.aiPhoto) {
+    y = await drawAiPhoto(doc, y, extras.aiPhoto);
+  }
   y = drawSpecTable(doc, y, rec.spec);
   y = drawCustomerTechnicalInput(doc, y, rec.spec.technical);
   y = drawWeavability(doc, y, rec.weavability);
+  if (extras?.aiReview) {
+    y = drawAiReview(doc, y, extras.aiReview);
+  }
   y = drawProductionSpecBlank(doc, y);
   await drawClosing(doc, y, rec);
 
   stampFooters(doc);
 
   return doc.output('blob');
+}
+
+// ---------------------------------------------------------------------------
+// Optional AI sections — always explicitly labeled as indicative/advisory.
+// ---------------------------------------------------------------------------
+
+const AI_PHOTO_CAPTION =
+  'AI-generated visualization — indicative only. Final appearance is confirmed by the approved physical sample.';
+
+async function drawAiPhoto(doc: jsPDF, y: number, aiPhoto: string): Promise<number> {
+  let jpeg: string | null = null;
+  let imgW = 0;
+  let imgH = 0;
+  const maxW = 170;
+  const maxH = 80;
+  const pad = 4;
+  try {
+    jpeg = await toCompactJpeg(aiPhoto);
+    const dims = await loadImageDims(jpeg);
+    const fitScale = Math.min((maxW - pad * 2) / dims.width, (maxH - pad * 2) / dims.height);
+    imgW = dims.width * fitScale;
+    imgH = dims.height * fitScale;
+  } catch {
+    return y; // skip the section rather than print a broken frame
+  }
+  if (!jpeg) return y;
+
+  const boxH = imgH + pad * 2;
+  // Keep the header and the image together — break BEFORE the header if the
+  // whole section won't fit, so the title is never orphaned at a page bottom.
+  y = pageBreakIfNeeded(doc, y, boxH + 26);
+  y = sectionHeader(doc, y, 'AI Photorealistic Visualization');
+  const boxX = CONTENT_X + (CONTENT_W - maxW) / 2;
+  doc.setDrawColor(...SLATE_300);
+  doc.setLineWidth(0.3);
+  doc.setFillColor(255, 255, 255);
+  doc.rect(boxX, y, maxW, boxH, 'FD');
+  doc.addImage(jpeg, 'JPEG', boxX + (maxW - imgW) / 2, y + pad, imgW, imgH);
+  y += boxH + 4;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(6.6);
+  doc.setTextColor(...SLATE_400);
+  const capLines = doc.splitTextToSize(AI_PHOTO_CAPTION, maxW) as string[];
+  doc.text(capLines, CONTENT_X + CONTENT_W / 2, y, { align: 'center' });
+  return y + capLines.length * 3.1 + 5;
+}
+
+function drawAiReview(doc: jsPDF, y: number, review: AiReviewResult): number {
+  y = sectionHeader(doc, y, 'AI Advisory Review');
+
+  const color = FEASIBILITY_COLOR[review.level];
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...color);
+  doc.text(`AI assessment: ${FEASIBILITY_LABEL[review.level]}`, CONTENT_X, y);
+  y += 6;
+
+  if (review.summary) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...SLATE_900);
+    const lines = doc.splitTextToSize(review.summary, CONTENT_W) as string[];
+    y = pageBreakIfNeeded(doc, y, lines.length * 4.1 + 4);
+    doc.text(lines, CONTENT_X, y);
+    y += lines.length * 4.1 + 2.5;
+  }
+
+  for (const issue of review.issues) {
+    y = pageBreakIfNeeded(doc, y, 8);
+    const sevColor = issue.severity === 'error' ? RED : issue.severity === 'warn' ? AMBER : SLATE_500;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.6);
+    doc.setTextColor(...sevColor);
+    doc.text(`[${issue.severity.toUpperCase()}]`, CONTENT_X, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.8);
+    doc.setTextColor(...SLATE_900);
+    const lines = doc.splitTextToSize(issue.message, CONTENT_W - 20) as string[];
+    doc.text(lines, CONTENT_X + 17, y);
+    y += Math.max(5, lines.length * 4.1) + 1.5;
+  }
+
+  y += 1.5;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...SLATE_400);
+  const disclaimer =
+    'Advisory AI feedback — not a production approval. Final manufacturability is decided by the Interconverters technical team.';
+  const lines = doc.splitTextToSize(disclaimer, CONTENT_W) as string[];
+  doc.text(lines, CONTENT_X, y);
+  return y + lines.length * 3.2 + 5;
 }

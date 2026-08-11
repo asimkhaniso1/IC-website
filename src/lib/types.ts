@@ -254,6 +254,13 @@ export interface WeavabilityResult {
   issues: WeavabilityIssue[];
 }
 
+/** Result of the optional Gemini-backed advisory review (display + PDF). */
+export interface AiReviewResult {
+  level: Feasibility;
+  issues: WeavabilityIssue[];
+  summary: string;
+}
+
 // ---------------------------------------------------------------------------
 // Persistence
 // ---------------------------------------------------------------------------
@@ -339,6 +346,10 @@ export interface DesignerModule<S extends DesignSpec = DesignSpec> {
 export interface RfqDialogProps {
   design: DesignRecord;
   previewPng?: string;
+  /** Latest AI advisory review, included in the attached spec PDF when present. */
+  aiReview?: AiReviewResult;
+  /** Latest AI photorealistic render (data URL), included in the spec PDF when present. */
+  aiPhoto?: string;
   open: boolean;
   onClose(): void;
 }

@@ -14,7 +14,7 @@ import { Badge, Button, Modal, TextInput } from '../../components/ui/index';
 import { COMPANY } from '../../lib/constants';
 import { revisionLabel } from '../../lib/ids';
 import { getStorageAdapter } from '../../lib/storage/index';
-import type { DesignRecord, DesignSpec, PreviewHandle, WeavabilityResult } from '../../lib/types';
+import type { AiReviewResult, DesignRecord, DesignSpec, PreviewHandle, WeavabilityResult } from '../../lib/types';
 import { generateSpecPdf } from '../../pdf/specSheet';
 import { RfqDialog } from '../../rfq/RfqDialog';
 import { FeasibilityBadge } from '../weavability/FeasibilityBadge';
@@ -32,6 +32,8 @@ export function TopBar({
   canRedo,
   onReset,
   previewRef,
+  aiReview,
+  aiPhoto,
 }: {
   familyLabel: string;
   spec: DesignSpec;
@@ -45,6 +47,10 @@ export function TopBar({
   canRedo: boolean;
   onReset: () => void;
   previewRef: RefObject<PreviewHandle | null>;
+  /** Latest AI advisory review — included in generated spec PDFs when present. */
+  aiReview?: AiReviewResult;
+  /** Latest AI photorealistic render — included in generated spec PDFs when present. */
+  aiPhoto?: string;
 }) {
   const [saving, setSaving] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -82,7 +88,7 @@ export function TopBar({
       const rec = record ?? (await persist());
       const png = await previewRef.current?.toPngDataUrl(3);
       if (!png) throw new Error('Preview is not ready yet — please try again.');
-      const blob = await generateSpecPdf(rec, png);
+      const blob = await generateSpecPdf(rec, png, { aiReview, aiPhoto });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -203,6 +209,8 @@ export function TopBar({
         <RfqDialog
           design={rfqDesign}
           previewPng={rfqPreviewPng}
+          aiReview={aiReview}
+          aiPhoto={aiPhoto}
           open={!!rfqDesign}
           onClose={() => setRfqDesign(null)}
         />

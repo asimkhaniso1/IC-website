@@ -314,6 +314,8 @@ function DesignerWorkspace({
           canRedo={canRedo}
           onReset={() => replace(createDefaultSpecFor(familySlug))}
           previewRef={previewRef}
+          aiReview={aiReview.status === 'ready' ? aiReview : undefined}
+          aiPhoto={aiPhoto.status === 'ready' ? aiPhoto.image : undefined}
         />
       }
       controls={
