@@ -58,7 +58,10 @@ export default function StudioSelect() {
             className="mb-10 inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" />
-            <img src={COMPANY.logo} alt="Interconverters" className="h-6 w-auto brightness-0 invert opacity-90" />
+            <span className="inline-flex items-center gap-2 rounded-lg bg-white px-2 py-1">
+              <img src={COMPANY.logo} alt="Interconverters" className="h-6 w-auto" />
+              <span className="text-xs font-bold tracking-tight text-brand-600">INTERCONVERTERS</span>
+            </span>
           </Link>
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-brand-300">
             Narrow Fabric Design Studio
