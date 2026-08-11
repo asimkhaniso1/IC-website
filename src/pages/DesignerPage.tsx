@@ -104,7 +104,7 @@ type AiPhotoState =
 // the limit being dodged by never saving). Soft client-side cap.
 // ---------------------------------------------------------------------------
 
-const AI_RENDER_LIMIT = 3;
+const AI_RENDER_LIMIT = 1;
 const RENDER_COUNT_KEY = 'ic_ai_render_counts_v1';
 
 function getRenderCount(key: string): number {
@@ -243,7 +243,10 @@ function DesignerWorkspace({
     if (getRenderCount(renderKey) >= AI_RENDER_LIMIT) {
       setAiPhoto({
         status: 'error',
-        message: `This design has used all ${AI_RENDER_LIMIT} AI photo renders. Adjust the design and save it as a new design for more, or contact us for the physical sample.`,
+        message:
+          AI_RENDER_LIMIT === 1
+            ? 'This design has used its AI photo render. Adjust the design and save it as a new design for another, or request a sample to see the real fabric.'
+            : `This design has used all ${AI_RENDER_LIMIT} AI photo renders. Adjust the design and save it as a new design for more, or contact us for the physical sample.`,
         unavailable: false,
         limitReached: true,
       });
@@ -433,7 +436,9 @@ function DesignerWorkspace({
           </div>
           {rendersLeft === 0 && (
             <p className="text-[11px] text-slate-400">
-              Each design includes {AI_RENDER_LIMIT} AI photo renders. Save your changes as a new design for more.
+              {AI_RENDER_LIMIT === 1
+                ? 'Each design includes one AI photo render. Save your changes as a new design for another.'
+                : `Each design includes ${AI_RENDER_LIMIT} AI photo renders. Save your changes as a new design for more.`}
             </p>
           )}
         </div>
