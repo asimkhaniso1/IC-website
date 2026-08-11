@@ -62,6 +62,14 @@ export function base64ByteLength(base64: string): number {
 }
 
 export function safeErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  return typeof err === 'string' ? err : 'Unknown error';
+  const raw = err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unknown error';
+  // Translate noisy upstream errors into short, customer-safe messages.
+  if (raw.includes('RESOURCE_EXHAUSTED') || raw.includes('"code":429')) {
+    return 'The AI service is at its usage limit right now. Please try again in a minute — or the site owner may need to enable billing for this AI feature.';
+  }
+  if (raw.includes('NOT_FOUND') && raw.includes('models/')) {
+    return 'The configured AI model is unavailable. The site owner has been notified.';
+  }
+  // Cap length so raw upstream JSON never floods the customer-facing dialog.
+  return raw.length > 220 ? `${raw.slice(0, 220)}…` : raw;
 }
