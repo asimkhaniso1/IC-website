@@ -104,7 +104,9 @@ type AiPhotoState =
 // the limit being dodged by never saving). Soft client-side cap.
 // ---------------------------------------------------------------------------
 
-const AI_RENDER_LIMIT = 1;
+// Typed as number (not the literal) so the singular/plural copy stays valid
+// whenever this is tuned.
+const AI_RENDER_LIMIT: number = 2;
 const RENDER_COUNT_KEY = 'ic_ai_render_counts_v1';
 
 function getRenderCount(key: string): number {

@@ -94,7 +94,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   try {
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-image',
+      // Nano Banana 2 Lite — half the cost of the standard image model
+      // ($0.034 vs $0.067 per 1K image) with quality that's fine for an
+      // indicative fabric visualization.
+      model: 'gemini-3.1-flash-lite-image',
       contents: [
         {
           role: 'user',
