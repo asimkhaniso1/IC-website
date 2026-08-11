@@ -95,7 +95,42 @@ type AiPhotoState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'ready'; image: string }
-  | { status: 'error'; message: string; unavailable: boolean };
+  | { status: 'error'; message: string; unavailable: boolean; limitReached?: boolean };
+
+// ---------------------------------------------------------------------------
+// AI photo render limit — cost control: each design gets a fixed number of
+// photorealistic renders. Tracked per design id in localStorage (unsaved
+// drafts share a per-family counter until they are saved, which also stops
+// the limit being dodged by never saving). Soft client-side cap.
+// ---------------------------------------------------------------------------
+
+const AI_RENDER_LIMIT = 3;
+const RENDER_COUNT_KEY = 'ic_ai_render_counts_v1';
+
+function getRenderCount(key: string): number {
+  try {
+    const map = JSON.parse(localStorage.getItem(RENDER_COUNT_KEY) ?? '{}') as Record<string, number>;
+    return map[key] ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function bumpRenderCount(key: string): number {
+  let map: Record<string, number> = {};
+  try {
+    map = JSON.parse(localStorage.getItem(RENDER_COUNT_KEY) ?? '{}') as Record<string, number>;
+  } catch {
+    /* start fresh */
+  }
+  map[key] = (map[key] ?? 0) + 1;
+  try {
+    localStorage.setItem(RENDER_COUNT_KEY, JSON.stringify(map));
+  } catch {
+    /* non-fatal */
+  }
+  return map[key];
+}
 
 type AiReviewState =
   | { status: 'idle' }
@@ -196,12 +231,30 @@ function DesignerWorkspace({
   const [aiReviewOpen, setAiReviewOpen] = useState(false);
   const [aiReview, setAiReview] = useState<AiReviewState>({ status: 'idle' });
 
+  // Saved designs count per design id; unsaved drafts share a per-family key.
+  const renderKey = record?.id ?? `draft-${familySlug}`;
+  const [renderCount, setRenderCount] = useState(() => getRenderCount(renderKey));
+  useEffect(() => {
+    setRenderCount(getRenderCount(renderKey));
+  }, [renderKey]);
+  const rendersLeft = Math.max(0, AI_RENDER_LIMIT - renderCount);
+
   async function runAiPhoto() {
+    if (getRenderCount(renderKey) >= AI_RENDER_LIMIT) {
+      setAiPhoto({
+        status: 'error',
+        message: `This design has used all ${AI_RENDER_LIMIT} AI photo renders. Adjust the design and save it as a new design for more, or contact us for the physical sample.`,
+        unavailable: false,
+        limitReached: true,
+      });
+      return;
+    }
     setAiPhoto({ status: 'loading' });
     try {
       const png = await previewRef.current?.toPngDataUrl(3);
       if (!png) throw new Error('Preview is not ready yet.');
       const { image } = await renderFabricPhoto(png, spec);
+      setRenderCount(bumpRenderCount(renderKey));
       setAiPhoto({ status: 'ready', image });
     } catch (err) {
       if (err instanceof AiUnavailableError) {
@@ -346,9 +399,11 @@ function DesignerWorkspace({
           ) : (
             <p>{aiPhoto.message}</p>
           )}
-          <Button size="sm" variant="secondary" className="mt-3" onClick={runAiPhoto}>
-            Try again
-          </Button>
+          {!aiPhoto.limitReached && (
+            <Button size="sm" variant="secondary" className="mt-3" onClick={runAiPhoto}>
+              Try again
+            </Button>
+          )}
         </div>
       )}
       {aiPhoto.status === 'ready' && (
@@ -370,10 +425,15 @@ function DesignerWorkspace({
             >
               <Download className="w-4 h-4" /> Download
             </a>
-            <Button size="md" variant="secondary" onClick={runAiPhoto}>
-              Regenerate
+            <Button size="md" variant="secondary" onClick={runAiPhoto} disabled={rendersLeft === 0}>
+              {rendersLeft > 0 ? `Regenerate (${rendersLeft} left)` : 'Render limit reached'}
             </Button>
           </div>
+          {rendersLeft === 0 && (
+            <p className="text-[11px] text-slate-400">
+              Each design includes {AI_RENDER_LIMIT} AI photo renders. Save your changes as a new design for more.
+            </p>
+          )}
         </div>
       )}
     </Modal>
