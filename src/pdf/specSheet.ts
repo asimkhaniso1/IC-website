@@ -14,11 +14,38 @@ import type {
   WovenSpec,
   WovenStripe,
 } from '../lib/types';
-import { COMPANY, FAMILY_BY_CODE, PDF_PREVIEW_DISCLAIMER, TECHNICAL_REVIEW_DISCLAIMER } from '../lib/constants';
+import {
+  COMPANY,
+  ELASTICITY_CLASSES,
+  FAMILY_BY_CODE,
+  PDF_PREVIEW_DISCLAIMER,
+  TECHNICAL_REVIEW_DISCLAIMER,
+} from '../lib/constants';
 import { revisionLabel } from '../lib/ids';
 import { mmToIn } from '../lib/units';
 import { hexToRgb } from '../lib/color';
+import { YARN_PALETTE } from '../studio/color/palette';
 import { qrDataUrl } from './qr';
+
+/** "standard" → "Standard" for cleaner presentation of enum-ish values. */
+function capitalize(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+/** Nearest yarn shade name for a hex color, e.g. "#1E293B" → "Navy". */
+function nearestYarnName(hex: string): string | null {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  let best: { name: string; d: number } | null = null;
+  for (const shade of YARN_PALETTE) {
+    const s = hexToRgb(shade.hex);
+    if (!s) continue;
+    const d = (rgb.r - s.r) ** 2 + (rgb.g - s.g) ** 2 + (rgb.b - s.b) ** 2;
+    if (!best || d < best.d) best = { name: shade.name, d };
+  }
+  // Only claim a name when reasonably close (distance threshold ~80 per channel).
+  return best && best.d < 3 * 80 ** 2 ? best.name : null;
+}
 
 // ---------------------------------------------------------------------------
 // Layout constants (mm, A4 portrait = 210 x 297)
@@ -113,7 +140,8 @@ function colorRow(doc: jsPDF, y: number, label: string, hex?: string): number {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(...SLATE_900);
-  doc.text(hex.toUpperCase(), VALUE_X + 7, y);
+  const yarn = nearestYarnName(hex);
+  doc.text(yarn ? `${yarn}  ·  ${hex.toUpperCase()}` : hex.toUpperCase(), VALUE_X + 7, y);
   const rowH = 7.6;
   rowDivider(doc, y + rowH - 1.6);
   return y + rowH;
@@ -146,7 +174,7 @@ function listHeader(doc: jsPDF, y: number, label: string): number {
   doc.setFontSize(7.8);
   doc.setTextColor(...SLATE_500);
   doc.text(label.toUpperCase(), CONTENT_X, y);
-  return y + 4.6;
+  return y; // first list item shares the label's baseline, like kvRow values
 }
 
 function closeList(doc: jsPDF, y: number): number {
@@ -359,39 +387,44 @@ function drawCustomerBlock(doc: jsPDF, y: number): number {
 async function drawPreview(doc: jsPDF, y: number, previewPng: string): Promise<number> {
   y = sectionHeader(doc, y, 'Fabric Preview');
   const maxW = 170;
-  const maxH = 82;
-  y = pageBreakIfNeeded(doc, y, maxH + 14);
+  const maxH = 75;
+  const minH = 26;
+  const pad = 4; // inner padding between border and image
   const boxX = CONTENT_X + (CONTENT_W - maxW) / 2;
+
+  // Size the frame to the image so the preview isn't lost inside an empty box.
+  let jpeg: string | null = null;
+  let imgW = 0;
+  let imgH = 0;
+  if (previewPng) {
+    try {
+      jpeg = await toCompactJpeg(previewPng);
+      const dims = await loadImageDims(jpeg);
+      const fitScale = Math.min((maxW - pad * 2) / dims.width, (maxH - pad * 2) / dims.height);
+      imgW = dims.width * fitScale;
+      imgH = dims.height * fitScale;
+    } catch {
+      jpeg = null;
+    }
+  }
+  const boxH = jpeg ? Math.max(minH, imgH + pad * 2) : minH;
+  y = pageBreakIfNeeded(doc, y, boxH + 14);
 
   doc.setDrawColor(...SLATE_300);
   doc.setLineWidth(0.3);
   doc.setFillColor(255, 255, 255);
-  doc.rect(boxX, y, maxW, maxH, 'FD');
+  doc.rect(boxX, y, maxW, boxH, 'FD');
 
-  if (previewPng) {
-    try {
-      const jpeg = await toCompactJpeg(previewPng);
-      const dims = await loadImageDims(jpeg);
-      const fitScale = Math.min(maxW / dims.width, maxH / dims.height);
-      const imgW = dims.width * fitScale;
-      const imgH = dims.height * fitScale;
-      const ix = boxX + (maxW - imgW) / 2;
-      const iy = y + (maxH - imgH) / 2;
-      doc.addImage(jpeg, 'JPEG', ix, iy, imgW, imgH);
-    } catch {
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(9);
-      doc.setTextColor(...SLATE_400);
-      doc.text('Preview not available', boxX + maxW / 2, y + maxH / 2, { align: 'center' });
-    }
+  if (jpeg) {
+    doc.addImage(jpeg, 'JPEG', boxX + (maxW - imgW) / 2, y + (boxH - imgH) / 2, imgW, imgH);
   } else {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(9);
     doc.setTextColor(...SLATE_400);
-    doc.text('Preview not available', boxX + maxW / 2, y + maxH / 2, { align: 'center' });
+    doc.text('Preview not available', boxX + maxW / 2, y + boxH / 2, { align: 'center' });
   }
 
-  y += maxH + 4;
+  y += boxH + 4;
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(6.6);
   doc.setTextColor(...SLATE_400);
@@ -408,17 +441,20 @@ function drawSpecTable(doc: jsPDF, y: number, spec: DesignSpec): number {
   y = sectionHeader(doc, y, 'Specification');
 
   const widthIn = mmToIn(spec.widthMm).toFixed(2);
-  y = kvRow(doc, y, 'Width', `${spec.widthMm.toFixed(1)} mm (${widthIn}")`);
+  y = kvRow(doc, y, 'Width', `${spec.widthMm.toFixed(1)} mm  (${widthIn} in)`);
   y = kvRow(doc, y, 'Roll Length', `${spec.rollLengthM} m`);
+  const elasticityLabel = ELASTICITY_CLASSES.find((e) => e.value === spec.elasticityClass)?.label;
   y = kvRow(
     doc,
     y,
-    'Elastic',
-    spec.elastic ? `Yes${spec.elasticityClass ? ` — ${spec.elasticityClass} stretch` : ''}` : 'No'
+    'Elasticity',
+    spec.elastic
+      ? `Elastic${elasticityLabel ? ` — ${elasticityLabel}` : ''}`
+      : 'Non-elastic (rigid tape / webbing)'
   );
-  y = kvRow(doc, y, 'Thickness Class', spec.thicknessClass);
+  y = kvRow(doc, y, 'Thickness Class', capitalize(spec.thicknessClass));
   if (spec.construction) y = kvRow(doc, y, 'Construction', spec.construction);
-  y = kvRow(doc, y, 'Edge Style', spec.edgeStyle);
+  y = kvRow(doc, y, 'Edge Style', capitalize(spec.edgeStyle));
   y = kvRow(doc, y, 'Application', spec.application);
 
   y = sectionHeader(doc, y, 'Colors');
@@ -430,21 +466,27 @@ function drawSpecTable(doc: jsPDF, y: number, spec: DesignSpec): number {
   if (spec.family === 'J') {
     const j = spec as JacquardSpec;
     y = sectionHeader(doc, y, 'Jacquard Detail');
-    y = colorRow(doc, y, 'Foreground Color', j.fg);
+    y = colorRow(doc, y, 'Motif / Foreground', j.fg);
     y = kvRow(doc, y, 'Repeat Length', `${j.repeat.lengthMm.toFixed(1)} mm`);
     y = kvRow(doc, y, 'Repeat Spacing', `${j.repeat.spacingMm.toFixed(1)} mm`);
-    y = kvRow(doc, y, 'Mirror', j.repeat.mirror ? 'Yes' : 'No');
-    y = kvRow(doc, y, 'Reverse', j.repeat.reverse ? 'Yes' : 'No');
+    y = kvRow(
+      doc,
+      y,
+      'Repeat Options',
+      [j.repeat.mirror ? 'Mirrored' : null, j.repeat.reverse ? 'Reversed' : null]
+        .filter(Boolean)
+        .join(', ') || 'Standard repeat'
+    );
     y = artworkRows(doc, y, j.artwork);
   } else if (spec.family === 'W') {
     const w = spec as WovenSpec;
     y = sectionHeader(doc, y, 'Woven Detail');
-    y = kvRow(doc, y, 'Rubber', w.rubber);
+    y = kvRow(doc, y, 'Rubber / Core', capitalize(w.rubber));
     y = stripeRows(doc, y, w.stripes);
   } else {
     const k = spec as KnittedSpec;
     y = sectionHeader(doc, y, 'Knitted Detail');
-    y = kvRow(doc, y, 'Rubber', k.rubber ? 'Yes' : 'No');
+    y = kvRow(doc, y, 'Rubber / Core', k.rubber ? 'Yes' : 'No');
   }
 
   if (spec.notes) {
@@ -532,11 +574,12 @@ function drawWeavability(doc: jsPDF, y: number, weav: WeavabilityResult | undefi
 // ---------------------------------------------------------------------------
 
 async function drawClosing(doc: jsPDF, y: number, rec: DesignRecord): Promise<number> {
-  const blockH = 62;
+  const blockH = 66;
   y = pageBreakIfNeeded(doc, y, blockH);
   y += 3;
 
-  const qrSize = 26;
+  const qrSize = 22;
+  const refBoxH = qrSize + 8;
   const slug = FAMILY_BY_CODE[rec.family]?.slug ?? 'design';
   const url = `${COMPANY.website}/studio/${slug}/${rec.id}`;
   let qr: string | null = null;
@@ -546,25 +589,35 @@ async function drawClosing(doc: jsPDF, y: number, rec: DesignRecord): Promise<nu
     qr = null;
   }
 
-  const qrX = CONTENT_X + CONTENT_W - qrSize;
-  if (qr) {
-    doc.addImage(qr, 'PNG', qrX, y, qrSize, qrSize);
-  } else {
-    doc.setDrawColor(...SLATE_300);
-    doc.rect(qrX, y, qrSize, qrSize);
-  }
-  doc.setFont('courier', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(...SLATE_900);
-  doc.text(rec.designCode, qrX + qrSize / 2, y + qrSize + 4, { align: 'center' });
+  // Design-reference band: code + scan note on the left, QR on the right,
+  // inside one bordered box so nothing floats.
+  doc.setFillColor(...SLATE_50);
+  doc.setDrawColor(...SLATE_200);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(CONTENT_X, y, CONTENT_W, refBoxH, 2, 2, 'FD');
 
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...SLATE_500);
+  doc.text('DESIGN REFERENCE', CONTENT_X + 5, y + 8);
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...BRAND);
+  doc.text(rec.designCode, CONTENT_X + 5, y + 16);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...SLATE_500);
-  const noteLines = doc.splitTextToSize('Scan to view this design online.', CONTENT_W - qrSize - 10) as string[];
-  doc.text(noteLines, CONTENT_X, y + qrSize / 2);
+  doc.text(`Revision ${revisionLabel(rec.revisionNo)}  ·  Scan the code to view this design online`, CONTENT_X + 5, y + 22.5);
 
-  const sigY = y + qrSize + 12;
+  const qrX = CONTENT_X + CONTENT_W - qrSize - 4;
+  if (qr) {
+    doc.addImage(qr, 'PNG', qrX, y + (refBoxH - qrSize) / 2, qrSize, qrSize);
+  } else {
+    doc.setDrawColor(...SLATE_300);
+    doc.rect(qrX, y + (refBoxH - qrSize) / 2, qrSize, qrSize);
+  }
+
+  const sigY = y + refBoxH + 8;
   const gap = 5;
   const boxW = (CONTENT_W - gap * 2) / 3;
   const labels = ['Prepared By', 'Reviewed By', 'Approved By'];
