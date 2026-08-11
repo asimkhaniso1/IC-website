@@ -58,9 +58,8 @@ function StyleCard({
       }`}
     >
       <div className="h-8 w-full overflow-hidden rounded-md border border-slate-200">{children}</div>
-      <div>
-        <div className="text-xs font-bold text-slate-700">{label}</div>
-        <div className="text-[11px] leading-snug text-slate-400">{description}</div>
+      <div className="text-xs font-bold text-slate-700" title={description}>
+        {label}
       </div>
     </button>
   );
@@ -96,6 +95,9 @@ export function KnittedControls({ spec, onChange, disabled }: DesignerControlsPr
             </StyleCard>
           ))}
         </div>
+        <p className="mt-2 text-[11px] text-slate-400">
+          {KNITTED_STYLES.find((s) => s.value === style)?.description}
+        </p>
       </Panel>
 
       <Panel title="Fabric">
