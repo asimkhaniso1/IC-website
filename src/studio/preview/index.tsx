@@ -22,6 +22,9 @@ const RULER_LEFT = 18;
 const RULER_TOP = 14;
 const RIGHT_PAD = 8;
 
+/** Max simulated elongation per elasticity class (upper bound of the class range). */
+const MAX_STRETCH: Record<string, number> = { low: 50, medium: 120, high: 200 };
+
 function jacquardCycleMm(spec: DesignSpec): number {
   if (spec.family !== 'J') return 0;
   const j = spec as JacquardSpec;
@@ -57,6 +60,15 @@ export default function FabricPreview({
   const svgRef = useRef<SVGSVGElement>(null);
   const idPrefix = `fp-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const [zoom, setZoom] = useState(1);
+  const [stretchPct, setStretchPct] = useState(0);
+
+  const maxStretch = MAX_STRETCH[spec.elasticityClass ?? ''] ?? 100;
+  const stretchActive =
+    spec.elastic && (mode === 'flat' || mode === 'repeat') && stretchPct > 0;
+  // Longitudinal stretch factor and the resulting width contraction
+  // (elastics neck slightly as they elongate — approximate power law).
+  const sx = stretchActive ? 1 + Math.min(stretchPct, maxStretch) / 100 : 1;
+  const sy = stretchActive ? Math.max(0.72, Math.pow(sx, -0.3)) : 1;
 
   useImperativeHandle(
     previewRef,
@@ -157,8 +169,13 @@ export default function FabricPreview({
     stageH = RULER_TOP + extraTop + heightMm + bottomPad;
     const stripY = RULER_TOP + extraTop;
 
+    // When stretch simulation is active the same physical strip is elongated
+    // by sx (so a shorter relaxed length fills the visible window) and necks
+    // to sy of its relaxed width. Artwork and texture stretch with the fabric.
+    const relaxedLengthMm = visibleLengthMm / sx;
     const repeatCells =
-      spec.family === 'J' ? Math.max(1, Math.ceil(visibleLengthMm / jacquardCycleMm(spec)) + 1) : undefined;
+      spec.family === 'J' ? Math.max(1, Math.ceil(relaxedLengthMm / jacquardCycleMm(spec)) + 1) : undefined;
+    const stripCenterY = stripY + heightMm / 2;
 
     content = (
       <g>
@@ -170,19 +187,27 @@ export default function FabricPreview({
           heightMm={heightMm}
           showGrid={showGrid}
           showRuler={showRuler}
-          showDimensions={showDims}
+          showDimensions={showDims && !stretchActive}
         />
-        <FabricStrip
-          spec={spec}
-          x={RULER_LEFT}
-          y={stripY}
-          lengthMm={visibleLengthMm}
-          idPrefix={`${idPrefix}-strip`}
-          interactive={interactive}
-          onSpecChange={onSpecChange}
-          repeatCells={repeatCells}
-        />
-        {mode === 'repeat' && spec.family === 'J' && (
+        <g
+          transform={
+            stretchActive
+              ? `translate(${RULER_LEFT}, ${stripCenterY}) scale(${sx}, ${sy}) translate(${-RULER_LEFT}, ${-stripCenterY})`
+              : undefined
+          }
+        >
+          <FabricStrip
+            spec={spec}
+            x={RULER_LEFT}
+            y={stripY}
+            lengthMm={relaxedLengthMm}
+            idPrefix={`${idPrefix}-strip`}
+            interactive={interactive && !stretchActive}
+            onSpecChange={onSpecChange}
+            repeatCells={repeatCells}
+          />
+        </g>
+        {mode === 'repeat' && spec.family === 'J' && !stretchActive && (
           <RepeatTicks spec={spec as JacquardSpec} originX={RULER_LEFT} y={stripY + heightMm + 3} lengthMm={visibleLengthMm} />
         )}
       </g>
@@ -249,10 +274,59 @@ export default function FabricPreview({
           {content}
         </svg>
       </div>
+      {/* Stretch simulation — the core "what happens to my logo when the elastic stretches" tool */}
+      {spec.elastic && (mode === 'flat' || mode === 'repeat') && (
+        <div className="mx-auto flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-sm">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            Stretch simulation
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-400">Relaxed</span>
+            <input
+              type="range"
+              min={0}
+              max={maxStretch}
+              step={5}
+              value={Math.min(stretchPct, maxStretch)}
+              onChange={(e) => setStretchPct(Number(e.target.value))}
+              className="w-40 accent-brand-600"
+              aria-label="Simulated elongation"
+            />
+            <span className="text-[11px] text-slate-400">Stretched</span>
+          </div>
+          <span className="w-12 text-right font-mono text-[11px] font-bold text-brand-600">
+            +{Math.min(stretchPct, maxStretch)}%
+          </span>
+          <div className="flex gap-1">
+            {[0, 25, 50, maxStretch].map((p, i, arr) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setStretchPct(p)}
+                className={`rounded-md px-2 py-0.5 text-[10px] font-bold transition-colors ${
+                  Math.min(stretchPct, maxStretch) === p
+                    ? 'bg-brand-600 text-white'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                {p === 0 ? 'Relaxed' : i === arr.length - 1 ? `Max ${p}%` : `${p}%`}
+              </button>
+            ))}
+          </div>
+          {stretchActive && (
+            <span className="font-mono text-[11px] text-slate-500">
+              width ≈ {(heightMm * sy).toFixed(1)} mm
+            </span>
+          )}
+        </div>
+      )}
+
       <p className="shrink-0 text-center text-[11px] italic text-slate-400">
         {mode === 'application'
           ? `Illustrative ${spec.application.toLowerCase()} mockup — approximate scale, not dimensionally exact`
-          : 'Approximate scale preview — not dimensionally exact'}
+          : stretchActive
+            ? `Simulated at +${Math.min(stretchPct, maxStretch)}% elongation — visual approximation, actual stretch behaviour depends on construction`
+            : 'Approximate scale preview — not dimensionally exact'}
       </p>
     </div>
   );
