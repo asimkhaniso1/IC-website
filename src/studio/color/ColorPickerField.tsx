@@ -1,15 +1,26 @@
 /**
  * Compact swatch + popover color picker used across the woven/knitted
- * designer control panels. Offers the curated yarn palette, a native color
- * input for free-form picking, a validated hex field and an RGB readout.
+ * designer control panels. Offers three tabbed swatch sources — the
+ * Interconverters yarn shade card, a curated Pantone reference library, and
+ * a free-form custom picker (native color input + hex + RGB readout).
  */
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { ColorSwatch, TextInput } from '../../components/ui';
 import { normalizeHex, hexToRgb } from '../../lib/color';
-import { YARN_PALETTE } from './palette';
+import { colorLabel } from './naming';
+import { PANTONE_REFERENCES } from './pantone';
+import { YARN_SHADE_CARD } from './yarnShades';
 
 const FALLBACK_HEX = '#94a3b8';
+
+type Tab = 'yarn' | 'pantone' | 'custom';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'yarn', label: 'Yarn shades' },
+  { id: 'pantone', label: 'Pantone' },
+  { id: 'custom', label: 'Custom' },
+];
 
 export function ColorPickerField({
   label,
@@ -23,6 +34,7 @@ export function ColorPickerField({
   allowClear?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>('yarn');
   const [hexText, setHexText] = useState(value ?? FALLBACK_HEX);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +60,11 @@ export function ColorPickerField({
     setHexText(raw);
     const n = normalizeHex(raw);
     if (n) onChange(n);
+  };
+
+  const pick = (hex: string) => {
+    onChange(hex);
+    setHexText(hex);
   };
 
   return (
@@ -81,52 +98,76 @@ export function ColorPickerField({
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-xl shadow-xl p-3 space-y-3">
-          <div>
-            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Yarn shades
-            </div>
-            <div className="grid grid-cols-8 gap-1.5">
-              {YARN_PALETTE.map((y) => (
-                <div key={y.hex} className="contents">
-                  <ColorSwatch
-                    color={y.hex}
-                    title={y.name}
-                    selected={normalizeHex(current) === normalizeHex(y.hex)}
-                    onClick={() => {
-                      onChange(y.hex);
-                      setHexText(y.hex);
-                    }}
-                  />
-                </div>
+        <div className="absolute z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-xl shadow-xl p-3 space-y-2.5">
+          <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`flex-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                  tab === t.id ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'yarn' && (
+            <div className="grid grid-cols-8 gap-1.5 max-h-36 overflow-y-auto pr-0.5">
+              {YARN_SHADE_CARD.map((y) => (
+                <ColorSwatch
+                  key={y.code}
+                  color={y.hex}
+                  title={`${y.name} (${y.code})`}
+                  selected={normalizeHex(current) === normalizeHex(y.hex)}
+                  onClick={() => pick(y.hex)}
+                />
               ))}
             </div>
-          </div>
+          )}
 
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-            <input
-              type="color"
-              value={normalizeHex(current) ?? '#000000'}
-              onChange={(e) => {
-                onChange(e.target.value);
-                setHexText(e.target.value);
-              }}
-              className="w-9 h-9 p-0 rounded border border-slate-200 bg-transparent cursor-pointer"
-              aria-label="Pick custom color"
-            />
-            <TextInput
-              value={hexText}
-              onChange={(e) => commitHex(e.target.value)}
-              placeholder="#000000"
-              className="font-mono text-xs"
-            />
-          </div>
-
-          {rgb && (
-            <div className="text-[11px] font-mono text-slate-400">
-              rgb({rgb.r}, {rgb.g}, {rgb.b})
+          {tab === 'pantone' && (
+            <div className="grid grid-cols-8 gap-1.5 max-h-36 overflow-y-auto pr-0.5">
+              {PANTONE_REFERENCES.map((p) => (
+                <ColorSwatch
+                  key={p.code}
+                  color={p.hex}
+                  title={`PANTONE ${p.code} ${p.name}`}
+                  selected={normalizeHex(current) === normalizeHex(p.hex)}
+                  onClick={() => pick(p.hex)}
+                />
+              ))}
             </div>
           )}
+
+          {tab === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={normalizeHex(current) ?? '#000000'}
+                onChange={(e) => pick(e.target.value)}
+                className="w-9 h-9 p-0 rounded border border-slate-200 bg-transparent cursor-pointer"
+                aria-label="Pick custom color"
+              />
+              <TextInput
+                value={hexText}
+                onChange={(e) => commitHex(e.target.value)}
+                placeholder="#000000"
+                className="font-mono text-xs"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+            <span className="text-[11px] font-medium text-slate-600 truncate">{colorLabel(current)}</span>
+            {rgb && (
+              <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                rgb({rgb.r}, {rgb.g}, {rgb.b})
+              </span>
+            )}
+          </div>
         </div>
       )}
     </div>

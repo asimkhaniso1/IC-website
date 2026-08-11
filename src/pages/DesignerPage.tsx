@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { Grid3x3, Ruler } from 'lucide-react';
-import { Button } from '../components/ui/index';
-import { FAMILY_BY_SLUG } from '../lib/constants';
+import { Download, Grid3x3, Loader2, Ruler, Sparkles } from 'lucide-react';
+import { Button, Modal } from '../components/ui/index';
+import { FAMILY_BY_SLUG, TECHNICAL_REVIEW_DISCLAIMER } from '../lib/constants';
 import { getStorageAdapter } from '../lib/storage/index';
+import { AiUnavailableError, analyzeDesignAi, renderFabricPhoto } from '../lib/ai';
 import type {
   DesignRecord,
   DesignSpec,
   Family,
+  Feasibility,
   JacquardSpec,
   KnittedSpec,
   PreviewHandle,
   PreviewMode,
+  WeavabilityIssue,
   WeavabilityResult,
   WovenSpec,
 } from '../lib/types';
@@ -23,6 +26,8 @@ import { StudioLayout } from '../studio/shell/StudioLayout';
 import { SpecSummaryPanel } from '../studio/shell/SpecSummaryPanel';
 import { TopBar } from '../studio/shell/TopBar';
 import { useDesignHistory } from '../studio/shell/useDesignHistory';
+import { AiCheckButton } from '../studio/weavability/AiCheckButton';
+import { FeasibilityBadge } from '../studio/weavability/FeasibilityBadge';
 import { checkWeavability } from '../studio/weavability/rules';
 
 type FamilySlug = 'jacquard' | 'woven' | 'knitted' | 'webbing';
@@ -85,6 +90,18 @@ const MODES: { value: PreviewMode; label: string }[] = [
   { value: 'repeat', label: 'Repeat' },
   { value: 'application', label: 'Application' },
 ];
+
+type AiPhotoState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; image: string }
+  | { status: 'error'; message: string; unavailable: boolean };
+
+type AiReviewState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; level: Feasibility; issues: WeavabilityIssue[]; summary: string }
+  | { status: 'error'; message: string; unavailable: boolean };
 
 export default function DesignerPage() {
   const { family, id } = useParams<{ family: string; id?: string }>();
@@ -174,7 +191,61 @@ function DesignerWorkspace({
     return () => clearTimeout(t);
   }, [spec]);
 
+  const [aiPhotoOpen, setAiPhotoOpen] = useState(false);
+  const [aiPhoto, setAiPhoto] = useState<AiPhotoState>({ status: 'idle' });
+  const [aiReviewOpen, setAiReviewOpen] = useState(false);
+  const [aiReview, setAiReview] = useState<AiReviewState>({ status: 'idle' });
+
+  async function runAiPhoto() {
+    setAiPhoto({ status: 'loading' });
+    try {
+      const png = await previewRef.current?.toPngDataUrl(3);
+      if (!png) throw new Error('Preview is not ready yet.');
+      const { image } = await renderFabricPhoto(png, spec);
+      setAiPhoto({ status: 'ready', image });
+    } catch (err) {
+      if (err instanceof AiUnavailableError) {
+        setAiPhoto({ status: 'error', message: err.message, unavailable: err.reason === 'not_configured' });
+      } else {
+        setAiPhoto({
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Something went wrong generating the image.',
+          unavailable: false,
+        });
+      }
+    }
+  }
+
+  function openAiPhoto() {
+    setAiPhotoOpen(true);
+    void runAiPhoto();
+  }
+
+  async function runAiReview() {
+    setAiReview({ status: 'loading' });
+    try {
+      const result = await analyzeDesignAi(spec);
+      setAiReview({ status: 'ready', ...result });
+    } catch (err) {
+      if (err instanceof AiUnavailableError) {
+        setAiReview({ status: 'error', message: err.message, unavailable: err.reason === 'not_configured' });
+      } else {
+        setAiReview({
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Something went wrong running the AI review.',
+          unavailable: false,
+        });
+      }
+    }
+  }
+
+  function openAiReview() {
+    setAiReviewOpen(true);
+    void runAiReview();
+  }
+
   return (
+    <>
     <StudioLayout
       topBar={
         <TopBar
@@ -219,7 +290,11 @@ function DesignerWorkspace({
                 </button>
               ))}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={openAiPhoto}>
+                <Sparkles className="w-4 h-4" /> AI Photo
+              </Button>
+              <AiCheckButton onClick={openAiReview} loading={aiReview.status === 'loading'} />
               <Button
                 size="sm"
                 variant={showGrid ? 'primary' : 'secondary'}
@@ -252,5 +327,112 @@ function DesignerWorkspace({
       }
       specification={<SpecSummaryPanel spec={spec} onSpecChange={setSpec} weavability={weavability} />}
     />
+
+    <Modal open={aiPhotoOpen} onClose={() => setAiPhotoOpen(false)} title="AI Photorealistic Preview" wide>
+      {aiPhoto.status === 'loading' && (
+        <div className="flex flex-col items-center justify-center gap-3 py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
+          <p className="text-sm text-slate-500">Rendering your fabric…</p>
+        </div>
+      )}
+      {aiPhoto.status === 'error' && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+          {aiPhoto.unavailable ? (
+            <p>
+              AI rendering isn&apos;t configured yet — it requires the{' '}
+              <code className="font-mono text-xs">GEMINI_API_KEY</code> on the server. The standard preview above
+              is always available.
+            </p>
+          ) : (
+            <p>{aiPhoto.message}</p>
+          )}
+          <Button size="sm" variant="secondary" className="mt-3" onClick={runAiPhoto}>
+            Try again
+          </Button>
+        </div>
+      )}
+      {aiPhoto.status === 'ready' && (
+        <div className="flex flex-col gap-4">
+          <img
+            src={aiPhoto.image}
+            alt="AI-generated photorealistic fabric visualization"
+            className="w-full rounded-xl border border-slate-200"
+          />
+          <p className="text-xs leading-relaxed text-slate-500">
+            AI-generated visualization — indicative only. Final appearance is confirmed by the approved physical
+            sample.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={aiPhoto.image}
+              download={`${spec.name || 'fabric-design'}-ai-preview.png`}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-600/30 bg-white px-4 py-2.5 text-sm font-bold text-brand-600 hover:bg-slate-50 transition-all"
+            >
+              <Download className="w-4 h-4" /> Download
+            </a>
+            <Button size="md" variant="secondary" onClick={runAiPhoto}>
+              Regenerate
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+
+    <Modal open={aiReviewOpen} onClose={() => setAiReviewOpen(false)} title="AI Manufacturability Review" wide>
+      {aiReview.status === 'loading' && (
+        <div className="flex flex-col items-center justify-center gap-3 py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
+          <p className="text-sm text-slate-500">Reviewing your design…</p>
+        </div>
+      )}
+      {aiReview.status === 'error' && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+          {aiReview.unavailable ? (
+            <p>
+              AI review isn&apos;t configured yet — it requires the{' '}
+              <code className="font-mono text-xs">GEMINI_API_KEY</code> on the server. The rule-based weavability
+              check in the panel on the right is always available.
+            </p>
+          ) : (
+            <p>{aiReview.message}</p>
+          )}
+          <Button size="sm" variant="secondary" className="mt-3" onClick={runAiReview}>
+            Try again
+          </Button>
+        </div>
+      )}
+      {aiReview.status === 'ready' && (
+        <div className="flex flex-col gap-4">
+          <FeasibilityBadge level={aiReview.level} />
+          <p className="text-sm leading-relaxed text-slate-700">{aiReview.summary}</p>
+          {aiReview.issues.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {aiReview.issues.map((issue, i) => (
+                <li
+                  key={`${issue.code}-${i}`}
+                  className={`text-xs rounded-lg border px-2.5 py-2 leading-relaxed ${
+                    issue.severity === 'error'
+                      ? 'border-red-200 bg-red-50 text-red-700'
+                      : issue.severity === 'warn'
+                        ? 'border-amber-200 bg-amber-50 text-amber-700'
+                        : 'border-slate-200 bg-slate-50 text-slate-600'
+                  }`}
+                >
+                  <p className="font-medium">{issue.message}</p>
+                  {issue.hint && <p className="mt-0.5 opacity-80">{issue.hint}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-col gap-1.5 border-t border-slate-100 pt-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+              Advisory AI feedback — not a production approval.
+            </p>
+            <p className="text-[11px] leading-relaxed text-slate-400">{TECHNICAL_REVIEW_DISCLAIMER}</p>
+          </div>
+        </div>
+      )}
+    </Modal>
+    </>
   );
 }

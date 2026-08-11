@@ -25,7 +25,7 @@ import {
 import { revisionLabel } from '../lib/ids';
 import { mmToIn } from '../lib/units';
 import { hexToRgb } from '../lib/color';
-import { YARN_PALETTE } from '../studio/color/palette';
+import { describeColor } from '../studio/color/naming';
 import { qrDataUrl } from './qr';
 
 /** "standard" → "Standard" for cleaner presentation of enum-ish values. */
@@ -33,19 +33,17 @@ function capitalize(s: string): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
-/** Nearest yarn shade name for a hex color, e.g. "#1E293B" → "Navy". */
-function nearestYarnName(hex: string): string | null {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return null;
-  let best: { name: string; d: number } | null = null;
-  for (const shade of YARN_PALETTE) {
-    const s = hexToRgb(shade.hex);
-    if (!s) continue;
-    const d = (rgb.r - s.r) ** 2 + (rgb.g - s.g) ** 2 + (rgb.b - s.b) ** 2;
-    if (!best || d < best.d) best = { name: shade.name, d };
-  }
-  // Only claim a name when reasonably close (distance threshold ~80 per channel).
-  return best && best.d < 3 * 80 ** 2 ? best.name : null;
+/**
+ * Printable color reference text, e.g. "Navy · IC-004 · PANTONE 186 C ·
+ * #1E293B" — omits the yarn/Pantone segments when no close match is found.
+ */
+function colorReferenceText(hex: string): string {
+  const { yarn, pantone } = describeColor(hex);
+  const parts: string[] = [];
+  if (yarn) parts.push(yarn.name, yarn.code);
+  if (pantone) parts.push(`PANTONE ${pantone.code}`);
+  parts.push(hex.toUpperCase());
+  return parts.join('  ·  ');
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +59,9 @@ const VALUE_X = CONTENT_X + LABEL_W + 3;
 const VALUE_W = CONTENT_W - LABEL_W - 3;
 const BREAK_Y = 270;
 const FOOTER_Y = 291;
+
+const COLOR_REFERENCE_FOOTNOTE =
+  'Color references are approximate on-screen matches. Physical yarn shade cards and approved lab dips govern production color.';
 
 const BRAND: [number, number, number] = [0, 74, 153];
 const SLATE_900: [number, number, number] = [15, 23, 42];
@@ -141,8 +142,7 @@ function colorRow(doc: jsPDF, y: number, label: string, hex?: string): number {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(...SLATE_900);
-  const yarn = nearestYarnName(hex);
-  doc.text(yarn ? `${yarn}  ·  ${hex.toUpperCase()}` : hex.toUpperCase(), VALUE_X + 7, y);
+  doc.text(colorReferenceText(hex), VALUE_X + 7, y);
   const rowH = 7.6;
   rowDivider(doc, y + rowH - 1.6);
   return y + rowH;
@@ -481,6 +481,14 @@ function drawSpecTable(doc: jsPDF, y: number, spec: DesignSpec): number {
   y = colorRow(doc, y, 'Accent Color', spec.accentColor);
   y = colorRow(doc, y, 'Edge Color', spec.edgeColor);
   y = additionalColorsRow(doc, y, spec.additionalColors);
+
+  y = pageBreakIfNeeded(doc, y, 8);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...SLATE_400);
+  const colorFootnoteLines = doc.splitTextToSize(COLOR_REFERENCE_FOOTNOTE, CONTENT_W) as string[];
+  doc.text(colorFootnoteLines, CONTENT_X, y);
+  y += colorFootnoteLines.length * 3.2 + 4;
 
   if (spec.family === 'J') {
     const j = spec as JacquardSpec;

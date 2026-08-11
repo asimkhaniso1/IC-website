@@ -14,6 +14,7 @@ import type {
 } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
 import { FeasibilityBadge } from '../weavability/FeasibilityBadge';
+import { colorLabel } from '../color/naming';
 
 const THICKNESS_DISPLAY: Record<ThicknessClass, string> = {
   light: 'Light',
@@ -47,11 +48,13 @@ function countTechnicalFilled(t?: TechnicalDetails): number {
 function ColorRow({ label, hex }: { label: string; hex?: string }) {
   if (!hex) return null;
   return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-slate-500">{label}</span>
-      <span className="flex items-center gap-2">
+    <div className="flex items-center justify-between gap-2 text-xs">
+      <span className="text-slate-500 shrink-0">{label}</span>
+      <span className="flex items-center gap-2 min-w-0">
         <ColorSwatch color={hex} size="sm" />
-        <span className="font-mono text-slate-700">{hex}</span>
+        <span className="font-mono text-slate-700 truncate" title={colorLabel(hex)}>
+          {colorLabel(hex)}
+        </span>
       </span>
     </div>
   );

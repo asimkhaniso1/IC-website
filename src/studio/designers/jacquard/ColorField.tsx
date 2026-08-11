@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Field, TextInput } from '../../../components/ui/index';
 import { normalizeHex } from '../../../lib/color';
+import { colorLabel } from '../../color/naming';
 
 /**
  * Inline color input: native color swatch + hex text field. Local to the
  * jacquard designer — the studio-wide ColorPickerField (if any) belongs to
- * another workstream and is intentionally not reused here.
+ * another workstream and is intentionally not reused here. Shows the
+ * matched yarn/Pantone caption from the shared color-naming lookup.
  */
 export function ColorField({
   label,
@@ -54,6 +56,7 @@ export function ColorField({
           spellCheck={false}
         />
       </div>
+      <span className="mt-1 block text-[11px] text-slate-400 truncate">{colorLabel(value)}</span>
     </Field>
   );
 }
