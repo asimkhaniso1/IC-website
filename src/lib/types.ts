@@ -36,6 +36,7 @@ export type DesignStatus =
 
 export type Application =
   | 'Waistband'
+  | 'Wristband'
   | 'Underwear'
   | 'Sportswear'
   | 'Activewear'

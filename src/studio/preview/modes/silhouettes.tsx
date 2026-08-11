@@ -95,21 +95,39 @@ const sneaker: SilhouetteConfig = {
   ],
 };
 
-/** Forearm with hand — band wraps around as a bandage. */
+/** Forearm with hand — bandage wraps around the mid-forearm. */
 const forearm: SilhouetteConfig = {
-  viewW: 265,
-  viewH: 145,
-  bandX: 128,
-  bandY: 40,
-  bandLengthMm: 64,
+  viewW: 275,
+  viewH: 150,
+  bandX: 118,
+  bandY: 44,
+  bandLengthMm: 58,
   bandRotationDeg: 90,
   bandMaxWidthMm: 44,
   paths: [
-    // arm top + bottom
-    'M14,60 C14,48 30,42 55,42 L192,44 C206,44 216,50 222,58 M14,84 C14,96 30,102 55,102 L192,100 C206,100 216,94 222,86',
-    // hand
-    'M222,58 C240,60 250,66 250,72 C250,78 240,84 222,86 M232,62 L233,82',
+    // upper-arm/elbow into forearm, top edge (tapering toward the wrist)
+    'M12,50 C24,42 44,40 62,42 L150,47 C176,49 196,52 210,56',
+    // bottom edge
+    'M12,104 C24,112 44,114 62,112 L150,105 C176,103 196,100 210,96',
+    // wrist + palm
+    'M210,56 C222,55 232,58 236,64 C242,60 252,60 256,66 C260,72 258,80 252,84 C244,94 228,98 216,96 C212,96 210,96 210,96',
+    // thumb
+    'M236,64 C240,54 250,50 258,53',
+    // finger hints
+    'M256,66 L268,64 M257,73 L269,73 M254,80 L266,82',
   ],
+};
+
+/** Same arm, band around the wrist (sweatband / wristband). */
+const wristband: SilhouetteConfig = {
+  viewW: 275,
+  viewH: 150,
+  bandX: 196,
+  bandY: 52,
+  bandLengthMm: 46,
+  bandRotationDeg: 90,
+  bandMaxWidthMm: 22,
+  paths: forearm.paths,
 };
 
 /** Parcel box — band is the strapping around it. */
@@ -135,8 +153,11 @@ export function getSilhouette(app: Application): SilhouetteConfig {
     case 'Underwear':
       return briefs;
     case 'Sportswear':
+    case 'Activewear':
     case 'Garment':
       return tshirt;
+    case 'Wristband':
+      return wristband;
     case 'Bag':
       return bag;
     case 'Footwear':

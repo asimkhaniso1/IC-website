@@ -66,6 +66,7 @@ export const DESIGN_STATUSES: DesignStatus[] = [
 
 export const APPLICATIONS: Application[] = [
   'Waistband',
+  'Wristband',
   'Underwear',
   'Sportswear',
   'Activewear',
