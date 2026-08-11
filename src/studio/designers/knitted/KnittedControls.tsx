@@ -99,7 +99,7 @@ export function KnittedControls({ spec, onChange, disabled }: DesignerControlsPr
       </Panel>
 
       <Panel title="Fabric">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-3">
           <WidthField spec={spec} onChange={onChange} minMm={caps.minWidthMm} maxMm={caps.maxWidthMm} />
           <RollLengthField spec={spec} onChange={onChange} />
         </div>

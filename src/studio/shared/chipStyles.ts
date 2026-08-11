@@ -4,7 +4,7 @@
  * so selection controls look identical across all three designers.
  */
 export const CHIP_BASE =
-  'px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border transition-colors whitespace-nowrap';
+  'px-2 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border transition-colors whitespace-nowrap';
 
 export const CHIP_SELECTED = 'bg-brand-600 text-white border-brand-600 shadow-sm';
 

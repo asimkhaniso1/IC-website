@@ -31,7 +31,7 @@ export function WidthField<S extends DesignSpec>({
 
   return (
     <Field label="Width" tooltip={GLOSSARY.width}>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {presets.map((w) => (
           <button
             key={w}
