@@ -4,15 +4,15 @@
  */
 
 import { useState, useEffect } from 'react';
-import { 
-  Shield, 
-  Settings, 
-  Users, 
-  Award, 
-  CheckCircle2, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  Shield,
+  Settings,
+  Users,
+  Award,
+  CheckCircle2,
+  Mail,
+  Phone,
+  MapPin,
   ArrowRight,
   Menu,
   X,
@@ -35,22 +35,32 @@ const COLORS = {
 const HeroSlider = () => {
   const slides = [
     {
-      image: '/input_file_2.png',
+      image: '/images/1.jpg',
       title: 'Precision Weaving',
       subtitle: 'Ultra-modern production facilities for individual textile solutions.'
     },
     {
-      image: '/input_file_1.png',
+      image: '/images/5.jpg',
+      title: 'Jacquard Weaving',
+      subtitle: 'Exquisite custom patterns and branding woven directly into high-quality elastic.'
+    },
+    {
+      image: '/images/a-2-crochet-machine-500x500.jpg',
+      title: 'Advanced Knitting',
+      subtitle: 'Specialized knitted fabrics for technical borders and industrial reinforcement.'
+    },
+    {
+      image: '/images/2.jpg',
       title: 'Premium Tapes & Braids',
       subtitle: 'Woven, elastic, and non-elastic solutions for global industries.'
     },
     {
-      image: '/input_file_5.png',
+      image: '/images/3.jpg',
       title: 'High-Tech Narrow Textiles',
       subtitle: 'Engineering excellence for extreme requirements.'
     },
     {
-      image: '/input_file_6.png',
+      image: '/images/4.jpg',
       title: 'Quality Material Selection',
       subtitle: 'Cotton, Polyester, Aramid and other special yarns.'
     }
@@ -76,9 +86,9 @@ const HeroSlider = () => {
           transition={{ duration: 1.5 }}
           className="absolute inset-0 z-0"
         >
-          <img 
-            src={slides[current].image} 
-            alt="Textile Manufacturing" 
+          <img
+            src={slides[current].image}
+            alt="Textile Manufacturing"
             className="w-full h-full object-cover opacity-60"
             referrerPolicy="no-referrer"
           />
@@ -105,15 +115,22 @@ const HeroSlider = () => {
             {slides[current].subtitle}
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
-            <a 
-              href="#products" 
+            <a
+              href="#products"
               className="px-8 py-4 bg-[#004A99] hover:bg-blue-700 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
             >
               Explore Products <ArrowRight className="w-5 h-5" />
             </a>
-            <a 
-              href="#contact" 
-              className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg font-bold transition-all text-center backdrop-blur-sm"
+            <a
+              href="/documents/IC-Profile-2024.pdf"
+              download
+              className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg font-bold transition-all text-center backdrop-blur-sm flex items-center justify-center gap-2"
+            >
+              Download Profile
+            </a>
+            <a
+              href="#contact"
+              className="px-8 py-4 bg-transparent hover:bg-white/10 text-white/80 rounded-lg font-bold transition-all text-center"
             >
               Contact Sales
             </a>
@@ -131,15 +148,15 @@ const HeroSlider = () => {
           />
         ))}
       </div>
-      
+
       {/* Floating Stats */}
       <div className="absolute bottom-12 right-6 md:right-12 z-10 hidden lg:flex gap-12">
         {[
-          { label: 'Employees', value: '30+' },
+          { label: 'Employees', value: '50+' },
           { label: 'Capabilities', value: 'ISO 9001' },
           { label: 'Location', value: 'Karachi' },
         ].map((stat, i) => (
-          <motion.div 
+          <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -178,10 +195,10 @@ const Navbar = () => {
     <nav className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white shadow-md py-3' : 'bg-transparent py-5'}`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <img 
-            src="/input_file_8.png" 
-            alt="Interconverters Logo Icon" 
-            className="w-10 h-10 object-contain"
+          <img
+            src="/images/LOGO1.png"
+            alt="Interconverters Logo Icon"
+            className="w-auto h-10 object-contain"
             referrerPolicy="no-referrer"
           />
           <div className="flex flex-col">
@@ -204,7 +221,7 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Menu Toggle */}
-        <button 
+        <button
           className="md:hidden p-2"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
@@ -243,14 +260,14 @@ const Navbar = () => {
 };
 
 const ProductCard = ({ title, description, features, image }: { title: string, description: string, features: string[], image: string }) => (
-  <motion.div 
+  <motion.div
     whileHover={{ y: -5 }}
     className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all group"
   >
     <div className="aspect-square bg-slate-100 overflow-hidden relative">
-      <img 
-        src={image} 
-        alt={title} 
+      <img
+        src={image}
+        alt={title}
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         referrerPolicy="no-referrer"
       />
@@ -301,28 +318,31 @@ export default function App() {
               viewport={{ once: true }}
               className="relative rounded-2xl overflow-hidden shadow-2xl"
             >
-              <img 
-                src="/input_file_5.png" 
-                alt="Our Facility" 
+              <img
+                src="/images/a-2-crochet-machine-500x500.jpg"
+                alt="Our Facility"
                 className="w-full h-[500px] object-cover"
                 referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-blue-900/20" />
               <div className="absolute bottom-6 left-6 right-6 p-6 bg-white/90 backdrop-blur-sm rounded-xl">
-                 <p className="text-xs font-bold text-[#004A99] uppercase tracking-widest mb-1">Karachi Headquarters</p>
-                 <p className="text-slate-800 text-sm font-medium">Equipped with ultra-modern production facilities.</p>
+                <p className="text-xs font-bold text-[#004A99] uppercase tracking-widest mb-1">Karachi Headquarters</p>
+                <p className="text-slate-800 text-sm font-medium">Equipped with ultra-modern production facilities.</p>
               </div>
             </motion.div>
-            
+
             <div className="space-y-8">
               <div>
                 <h2 className="text-blue-600 font-bold tracking-widest text-sm uppercase mb-4">Who We Are</h2>
                 <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6 text-balance">Expert Solutions for Extreme Requirements</h3>
-                <p className="text-slate-600 leading-relaxed text-lg">
-                  At our modern headquarters in Karachi, Pakistan, more than 30 experts develop and produce elastic and non-elastic woven and knitted tapes, as well as medical bandages.
+                <p className="text-slate-600 leading-relaxed text-lg mb-6">
+                  At our modern headquarters in Karachi, Pakistan, more than 50 experts develop and produce elastic and non-elastic woven and knitted tapes, as well as medical bandages.
+                </p>
+                <p className="text-slate-600 leading-relaxed text-md italic border-l-4 border-[#004A99] pl-4">
+                  "At Interconverters Pvt. Ltd. We are committed to foster an atmosphere of trust and mutual respect among our employees, customers, and suppliers, enabling us to excel as a leading global provider of elastic and rubber solutions."
                 </p>
               </div>
-              
+
               <div className="grid sm:grid-cols-2 gap-8">
                 {[
                   { icon: Factory, title: "Modern Tech", desc: "Ultra-modern machine park for innovative processes." },
@@ -385,41 +405,77 @@ export default function App() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <ProductCard 
-              title="Rubber Tape"
-              description="Woven, elastic, variable width and colour. Ideal for extreme environmental protection."
-              features={["Customer-specific equipment", "Variable width", "Multi-colour options"]}
-              image="/input_file_0.png"
+            <ProductCard
+              title="Rebound Strap"
+              description="High-strength elastic tape ideal for extreme environmental protection and specialized use."
+              features={["Durable elasticity", "Variable width", "Heavy-duty applications"]}
+              image="/images/rebound strap.jpg"
             />
-            <ProductCard 
-              title="Premium Bundles"
-              description="High-performance woven and knitted tapes with integrated design elements and extreme durability."
-              features={["Bi-elastic fabrics", "Saltwater resistant", "Heat repellent"]}
-              image="/input_file_1.png"
+            <ProductCard
+              title="Narrow Width Fabric"
+              description="Premium woven and knitted tapes designed with integrated technical elements."
+              features={["Precision weaving", "Variable composition", "Industrial grade"]}
+              image="/images/Narrow Width fabric.jpg"
             />
-            <ProductCard 
-              title="Medical Bandages"
-              description="Knitted high elastic bandage made of Cotton and Polyester. Breathable and comfortable."
-              features={["Skin friendly", "Disinfectable textiles", "Oeko-Tex Standard"]}
-              image="https://images.unsplash.com/photo-1581056771107-24ca5f033842?q=80&w=2070&auto=format&fit=crop"
+            <ProductCard
+              title="Knitted High Elastic Bandage"
+              description="Made of Cotton and Polyester. Breathable and comfortable for medical applications."
+              features={["Skin friendly", "Disinfectable", "Oeko-Tex Standard"]}
+              image="/images/Knitted-High-Elastic-Bandage.jpg"
             />
-            <ProductCard 
-              title="Precision Knitting"
-              description="Highly specialized knitted fabrics for technical borders and industrial reinforcement."
-              features={["Slotted & perforated", "Flame-retardant", "Variable eyelets"]}
-              image="/input_file_3.png"
+            <ProductCard
+              title="Hemming Strap"
+              description="Woven, elastic, variable width and colour. Perfect for specialized garment edges."
+              features={["2-coloured options", "Customer-specific finish", "Versatile"]}
+              image="/images/6.jpg"
             />
-            <ProductCard 
+            <ProductCard
               title="Carrier Strap"
-              description="Heavy-duty straps for backpacks, outdoor equipment, and safety harnesses."
-              features={["Maximum safety", "High load capacity", "Technical narrow textiles"]}
-              image="/input_file_2.png"
+              description="Heavy-duty woven straps with elastic variable width and colour for demanding equipment."
+              features={["Maximum safety", "High load capacity", "Technical equipment"]}
+              image="/images/7.jpg"
             />
-            <ProductCard 
-              title="Braided Elastic"
-              description="Buttonhole braids and cords for high-performance sports textiles and uniforms."
-              features={["Elastic & Non-elastic", "Round or Flat", "Customer-specific finish"]}
-              image="/input_file_4.png"
+            <ProductCard
+              title="Braided Elastic with Buttonholes"
+              description="Braided, elastic, slotted solutions carefully variable in width and colour."
+              features={["Slotted structure", "Variable width", "Premium finish"]}
+              image="/images/8.jpg"
+            />
+            <ProductCard
+              title="FlexiKlett"
+              description="Woven, elastic, hook-and-loop-ready fastener capable tapes."
+              features={["Hook-and-loop ready", "Customer-specific", "Variable colour"]}
+              image="/images/9.jpg"
+            />
+            <ProductCard
+              title="Woven Form Tapes"
+              description="Flame-retardant, slotted, perforated tapes with eyelets for ultimate flexibility."
+              features={["Flame-retardant", "With eyelets", "Perforated design"]}
+              image="/images/5.jpg"
+            />
+            <ProductCard
+              title="Grab Loops"
+              description="Woven loops with marking capability, suitable for high-wear environments."
+              features={["Marking ready", "Variable width", "Heavy duty"]}
+              image="/images/rebound strap.jpg"
+            />
+            <ProductCard
+              title="Jacquard Woven Elastic"
+              description="High-quality custom woven elastic with intricate patterns and branding."
+              features={["Custom branding", "Jacquard patterns", "Durable stretch"]}
+              image="/images/1.jpg"
+            />
+            <ProductCard
+              title="Normal Crochet Elastic"
+              description="Standard breathable crochet elastic designed for varied garment applications."
+              features={["Breathable", "Versatile design", "Consistent stretch"]}
+              image="/images/3.jpg"
+            />
+            <ProductCard
+              title="Twill Tape"
+              description="Strong woven twill tape ideal for binding, seams, and finishing edges with herringbone patterns."
+              features={["Herringbone weave", "High strength", "Various widths"]}
+              image="/images/4.jpg"
             />
           </div>
         </div>
@@ -441,39 +497,39 @@ export default function App() {
                 <div>Knitted Fabrics</div>
                 <div>Braided</div>
               </div>
-              
-              <CapabilityRow 
-                label="Item" 
-                woven="Tapes, Straps" 
-                knitted="Nets, Raschel goods" 
-                braided="Braids, Cords, Hoses" 
+
+              <CapabilityRow
+                label="Item"
+                woven="Tapes, Straps"
+                knitted="Nets, Raschel goods"
+                braided="Braids, Cords, Hoses"
               />
-              <CapabilityRow 
-                label="Property" 
-                woven="Elastic, Transverse" 
-                knitted="Elastic, Bi-elastic" 
-                braided="Elastic, Non-elastic" 
+              <CapabilityRow
+                label="Property"
+                woven="Elastic, Transverse"
+                knitted="Elastic, Bi-elastic"
+                braided="Elastic, Non-elastic"
               />
-              <CapabilityRow 
-                label="Width/Dia" 
-                woven="2mm - 320mm" 
-                knitted="Depends on design" 
-                braided="0.5mm - 65mm" 
+              <CapabilityRow
+                label="Width/Dia"
+                woven="2mm - 320mm"
+                knitted="Depends on design"
+                braided="0.5mm - 65mm"
               />
-              <CapabilityRow 
-                label="Elongation" 
-                woven="10% - 200%" 
-                knitted="Depends on design" 
-                braided="5% - 300%" 
+              <CapabilityRow
+                label="Elongation"
+                woven="10% - 200%"
+                knitted="Depends on design"
+                braided="5% - 300%"
               />
-              <CapabilityRow 
-                label="Materials" 
-                woven="PES, Cotton, Aramid" 
-                knitted="Nylon, Polyacrylic" 
-                braided="Lycra, Silicone, PES" 
+              <CapabilityRow
+                label="Materials"
+                woven="PES, Cotton, Aramid"
+                knitted="Nylon, Polyacrylic"
+                braided="Lycra, Silicone, PES"
               />
             </div>
-            
+
             <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 { title: 'Finishing', desc: 'Low-shrinkage, Flame retardant, Water-repellent' },
@@ -501,7 +557,7 @@ export default function App() {
               <p className="text-slate-600 mb-8 leading-relaxed text-lg">
                 Highest quality takes top priority at Interconverters Pvt. Ltd. We are a future-oriented company taking responsibility for people and nature.
               </p>
-              
+
               <div className="space-y-6">
                 <div className="flex gap-4">
                   <div className="flex-shrink-0 w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-green-600">
@@ -532,20 +588,47 @@ export default function App() {
                 </div>
               </div>
             </div>
-            
-            <div className="lg:w-1/2 grid grid-cols-2 gap-4">
-                <div className="aspect-square bg-slate-100 rounded-2xl flex items-center justify-center p-8 border border-slate-200">
-                   <div className="text-center font-bold text-slate-400">ISO 14001</div>
+
+            <div className="lg:w-1/2 grid grid-cols-2 gap-8 relative items-center">
+              {/* ISO 14001 Badge */}
+              <div className="aspect-square bg-white rounded-full flex flex-col items-center justify-center p-4 border-[12px] border-[#0A8A4B] shadow-xl shadow-green-900/10 hover:scale-105 transition-transform">
+                <div className="w-full h-full border-[3px] border-[#0A8A4B] rounded-full flex flex-col items-center justify-center bg-white relative overflow-hidden">
+                  <div className="absolute top-0 w-full h-1/2 bg-gradient-to-b from-green-50 to-transparent" />
+                  <span className="text-[#0A8A4B] font-black tracking-widest uppercase text-[10px] mb-1 relative z-10 text-center">Certified</span>
+                  <span className="text-[#0A8A4B] font-black text-3xl leading-none relative z-10 text-center">ISO</span>
+                  <span className="text-[#0A8A4B] font-bold text-sm mb-1 relative z-10 text-center">14001:2015</span>
+                  <span className="text-[#0A8A4B] font-black tracking-widest uppercase text-[10px] mt-1 relative z-10 text-center">Company</span>
                 </div>
-                <div className="aspect-square bg-white rounded-2xl flex items-center justify-center p-8 border border-slate-200 shadow-lg">
-                   <div className="text-center font-bold text-[#004A99]">OEKO-TEX®</div>
+              </div>
+
+              {/* OEKO-TEX Badge */}
+              <div className="aspect-[4/3] bg-white rounded-md flex flex-col items-center justify-center p-4 shadow-xl border border-slate-200 shadow-slate-900/10 hover:scale-105 transition-transform relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-yellow-500 to-blue-600" />
+                <span className="text-slate-800 font-black text-2xl tracking-tight leading-none mb-1 text-center">OEKO-TEX®</span>
+                <span className="text-slate-500 font-bold text-[8px] uppercase tracking-widest mb-3 text-center">Confidence in Textiles</span>
+                <span className="text-amber-500 font-black text-sm tracking-widest px-2 py-1 bg-amber-50 rounded text-center">STANDARD 100</span>
+                <span className="text-slate-400 font-medium text-[8px] mt-3 text-center leading-tight">Tested for harmful substances.<br />www.oeko-tex.com/standard100</span>
+              </div>
+
+              {/* ISO 9001 Badge */}
+              <div className="aspect-square bg-white rounded-full flex flex-col items-center justify-center p-4 border-[12px] border-[#004A99] shadow-xl shadow-blue-900/10 hover:scale-105 transition-transform -translate-y-6">
+                <div className="w-full h-full border-[3px] border-[#004A99] rounded-full flex flex-col items-center justify-center bg-white relative overflow-hidden">
+                  <div className="absolute top-0 w-full h-1/2 bg-gradient-to-b from-blue-50 to-transparent" />
+                  <span className="text-[#004A99] font-black tracking-widest uppercase text-[10px] mb-1 relative z-10 text-center">Certified</span>
+                  <span className="text-[#004A99] font-black text-3xl leading-none relative z-10 text-center">ISO</span>
+                  <span className="text-[#004A99] font-bold text-sm mb-1 relative z-10 text-center">9001:2015</span>
+                  <span className="text-[#004A99] font-black tracking-widest uppercase text-[10px] mt-1 relative z-10 text-center">Company</span>
                 </div>
-                <div className="aspect-square bg-white rounded-2xl flex items-center justify-center p-8 border border-slate-200 shadow-lg">
-                   <div className="text-center font-bold text-[#004A99]">ISO 9001</div>
-                </div>
-                <div className="aspect-square bg-slate-950 rounded-2xl flex items-center justify-center p-8">
-                   <Award className="text-white w-12 h-12" />
-                </div>
+              </div>
+
+              {/* FBR Taxpayer Badge */}
+              <a href="/documents/tax-certificate.pdf" target="_blank" rel="noopener noreferrer" className="aspect-[4/3] bg-white rounded-xl flex flex-col items-center justify-center p-4 shadow-xl border border-slate-200 shadow-slate-900/10 hover:-rotate-3 transition-transform relative group">
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-cyan-50 to-white opacity-50 rounded-xl" />
+                <Globe className="text-cyan-800 w-10 h-10 mb-2 relative z-10 group-hover:scale-110 transition-transform" />
+                <span className="text-cyan-900 font-black text-lg tracking-tight leading-none mb-1 text-center relative z-10">FBR PAKISTAN</span>
+                <span className="text-cyan-800 font-bold text-[10px] uppercase tracking-widest mb-1 text-center relative z-10">Taxpayer Registered</span>
+                <span className="text-slate-400 font-medium text-[9px] mt-2 text-center underline relative z-10 group-hover:text-cyan-600 transition-colors">View Certificate PDF</span>
+              </a>
             </div>
           </div>
         </div>
@@ -559,7 +642,7 @@ export default function App() {
               <div className="relative z-10">
                 <h3 className="text-3xl font-bold mb-6">Let's develop your solution.</h3>
                 <p className="text-white/70 mb-12">The solution is as individual as the requirement. Our development team creates what you want.</p>
-                
+
                 <div className="space-y-8">
                   <div className="flex items-start gap-4">
                     <Phone className="w-6 h-6 text-blue-300 mt-1" />
@@ -589,7 +672,7 @@ export default function App() {
               </div>
               <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/5 rounded-tl-[100%] pointer-events-none" />
             </div>
-            
+
             <div className="lg:w-3/5 p-12 bg-white">
               <h4 className="text-2xl font-bold mb-8">Send a Message</h4>
               <form className="space-y-6">
@@ -630,10 +713,10 @@ export default function App() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
             <div className="col-span-1 lg:col-span-2">
               <div className="flex items-center gap-3 mb-6">
-                <img 
-                  src="/input_file_8.png" 
-                  alt="Interconverters Logo Footer" 
-                  className="w-12 h-12 object-contain brightness-0 invert"
+                <img
+                  src="/images/LOGO1.png"
+                  alt="Interconverters Logo Footer"
+                  className="h-12 w-auto object-contain brightness-0 invert"
                   referrerPolicy="no-referrer"
                 />
                 <div className="flex flex-col">
@@ -648,7 +731,7 @@ export default function App() {
                 {/* Social placeholders could go here */}
               </div>
             </div>
-            
+
             <div>
               <h5 className="text-white font-bold mb-6 uppercase text-sm tracking-widest">Quick Links</h5>
               <ul className="space-y-4 text-sm font-medium">
@@ -658,7 +741,7 @@ export default function App() {
                 <li><a href="#quality" className="hover:text-white transition-colors">Certifications</a></li>
               </ul>
             </div>
-            
+
             <div>
               <h5 className="text-white font-bold mb-6 uppercase text-sm tracking-widest">Global Support</h5>
               <ul className="space-y-4 text-sm font-medium">
@@ -669,7 +752,7 @@ export default function App() {
               </ul>
             </div>
           </div>
-          
+
           <div className="pt-8 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold tracking-widest uppercase">
             <p>© 2024 Interconverters Pvt. Ltd. All rights reserved.</p>
             <p>Design & Engineering for Extreme Conditions</p>
