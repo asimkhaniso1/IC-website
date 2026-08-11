@@ -38,6 +38,7 @@ export type Application =
   | 'Waistband'
   | 'Underwear'
   | 'Sportswear'
+  | 'Activewear'
   | 'Garment'
   | 'Footwear'
   | 'Bag'
@@ -49,7 +50,56 @@ export type Application =
 
 export type EdgeStyle = 'straight' | 'picot' | 'scallop';
 export type ThicknessClass = 'light' | 'standard' | 'heavy';
-export type ElasticityClass = 'low' | 'medium' | 'high';
+/** Customer-friendly stretch selection. 'custom' pairs with customElongationPct. */
+export type ElasticityClass = 'low' | 'medium' | 'high' | 'custom';
+export type Firmness = 'soft' | 'medium' | 'firm';
+export type WovenStyle = 'standard' | 'striped' | 'ribbed';
+export type KnittedStyle = 'standard' | 'ribbed';
+export type RibAppearance = 'fine' | 'medium' | 'bold';
+
+/**
+ * Optional advanced/technical details. Customers may fill these in the
+ * collapsed "Advanced / Technical" section; the Interconverters technical
+ * team fills them authoritatively in the production specification. All
+ * fields are free-text strings in V1 — validation comes with the
+ * manufacturing capability library.
+ */
+export interface TechnicalDetails {
+  constructionType?: string;
+  yarnType?: string;
+  yarnCount?: string;
+  warpConfig?: string;
+  weftConfig?: string;
+  rubberType?: string;
+  rubberConfig?: string;
+  elasticEnds?: string;
+  picksDensity?: string;
+  finishedWidthMm?: string;
+  elongationPct?: string;
+  recoveryPct?: string;
+  weightPerMeter?: string;
+  gsm?: string;
+  thicknessMm?: string;
+  tolerance?: string;
+  machineRef?: string;
+  finishing?: string;
+  notes?: string;
+}
+
+/**
+ * Internal production specification — owned by the technical team, stored
+ * SEPARATELY from the customer's design requirement. The customer's choices
+ * never automatically become an approved manufacturing specification.
+ */
+export interface ProductionSpec {
+  id: string;
+  projectId: string;
+  details: TechnicalDetails;
+  /** 'draft' until an authorized technical user approves it. */
+  status: 'draft' | 'approved';
+  updatedBy?: string;
+  updatedAt: string;
+}
 
 // ---------------------------------------------------------------------------
 // Design specification (discriminated union by family)
@@ -65,16 +115,23 @@ export interface BaseSpec {
   rollLengthM: number;
   elastic: boolean;
   elasticityClass?: ElasticityClass;
+  /** Target elongation % when elasticityClass === 'custom'. */
+  customElongationPct?: number;
+  /** Customer-friendly feel selection. */
+  firmness?: Firmness;
   thicknessClass: ThicknessClass;
   /** Optional free-text construction note (admin may refine). */
   construction?: string;
   baseColor: string;
   secondaryColor?: string;
+  accentColor?: string;
   additionalColors?: string[];
   edgeColor?: string;
   edgeStyle: EdgeStyle;
   application: Application;
   notes?: string;
+  /** Optional customer-entered advanced details (collapsed section). */
+  technical?: TechnicalDetails;
 }
 
 /** Position/size of one artwork item on the fabric strip, in mm. */
@@ -137,12 +194,18 @@ export interface WovenStripe {
 
 export interface WovenSpec extends BaseSpec {
   family: 'W';
+  /** Customer-facing style. Missing (older designs) → treat as 'striped' when stripes exist, else 'standard'. */
+  style?: WovenStyle;
   stripes: WovenStripe[];
+  ribAppearance?: RibAppearance;
   rubber: 'single' | 'double' | 'none';
 }
 
 export interface KnittedSpec extends BaseSpec {
   family: 'K';
+  /** Customer-facing style. Missing (older designs) → 'standard'. */
+  style?: KnittedStyle;
+  ribAppearance?: RibAppearance;
   rubber: boolean;
 }
 

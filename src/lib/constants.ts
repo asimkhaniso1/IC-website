@@ -4,7 +4,10 @@ import type {
   EdgeStyle,
   ElasticityClass,
   Family,
+  Firmness,
+  KnittedStyle,
   ThicknessClass,
+  WovenStyle,
 } from './types';
 
 export const FAMILIES: {
@@ -65,6 +68,7 @@ export const APPLICATIONS: Application[] = [
   'Waistband',
   'Underwear',
   'Sportswear',
+  'Activewear',
   'Garment',
   'Footwear',
   'Bag',
@@ -74,6 +78,12 @@ export const APPLICATIONS: Application[] = [
   'Furniture',
   'Other',
 ];
+
+/** Standard widths from the Interconverters product range. "Custom" is offered alongside. */
+export const STANDARD_WIDTHS_MM = [10, 15, 20, 25, 30, 32, 38, 40, 50];
+
+/** Standard roll lengths (m). "Custom" is offered alongside. */
+export const STANDARD_ROLL_LENGTHS_M = [25, 50, 100, 150, 200];
 
 export const EDGE_STYLES: { value: EdgeStyle; label: string }[] = [
   { value: 'straight', label: 'Straight' },
@@ -91,6 +101,87 @@ export const ELASTICITY_CLASSES: { value: ElasticityClass; label: string }[] = [
   { value: 'low', label: 'Low stretch (10–50%)' },
   { value: 'medium', label: 'Medium stretch (50–120%)' },
   { value: 'high', label: 'High stretch (120–200%)' },
+  { value: 'custom', label: 'Custom — set target elongation' },
+];
+
+export const FIRMNESS_OPTIONS: { value: Firmness; label: string }[] = [
+  { value: 'soft', label: 'Soft' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'firm', label: 'Firm' },
+];
+
+export const WOVEN_STYLES: { value: WovenStyle; label: string; description: string }[] = [
+  { value: 'standard', label: 'Standard', description: 'Solid single-color woven elastic or tape.' },
+  { value: 'striped', label: 'Striped', description: 'Longitudinal stripes in your colors.' },
+  { value: 'ribbed', label: 'Ribbed', description: 'Corded / ribbed surface texture.' },
+];
+
+export const KNITTED_STYLES: { value: KnittedStyle; label: string; description: string }[] = [
+  { value: 'standard', label: 'Standard', description: 'Smooth knitted elastic.' },
+  { value: 'ribbed', label: 'Ribbed / Patterned', description: 'Ribbed or subtly patterned knit surface.' },
+];
+
+export const RIB_APPEARANCES: { value: 'fine' | 'medium' | 'bold'; label: string }[] = [
+  { value: 'fine', label: 'Fine ribs' },
+  { value: 'medium', label: 'Medium ribs' },
+  { value: 'bold', label: 'Bold ribs' },
+];
+
+/**
+ * Internal construction library — production terminology for the technical
+ * team. Never required from normal customers.
+ */
+export const CONSTRUCTION_LIBRARY: Record<Family, string[]> = {
+  W: ['Plain', 'Twill', 'Ribbed / Corded', 'Striped', 'Jacquard', 'Other'],
+  K: ['Crochet', 'Warp Knit', 'Raschel', 'Rib Knit', 'Patterned Knit', 'Other'],
+  J: ['Jacquard', 'Other'],
+};
+
+/**
+ * Studio selection cards. Slugs map onto the three designers — the
+ * non-elastic webbing card opens the woven designer preset to non-elastic.
+ * Family codes stay J / W / K (never "T").
+ */
+export const STUDIO_CARDS: {
+  slug: 'jacquard' | 'woven' | 'knitted' | 'webbing';
+  code: Family;
+  label: string;
+  description: string;
+  styles: string[];
+  image: string;
+}[] = [
+  {
+    slug: 'jacquard',
+    code: 'J',
+    label: 'Jacquard Elastic',
+    description: 'Custom logos, text and woven patterns',
+    styles: ['Logo', 'Text', 'Repeating pattern'],
+    image: '/images/studio-jacquard.jpg',
+  },
+  {
+    slug: 'woven',
+    code: 'W',
+    label: 'Woven Elastic',
+    description: 'Durable woven elastics with custom stripes and edges',
+    styles: ['Standard', 'Striped', 'Ribbed'],
+    image: '/images/studio-woven.jpg',
+  },
+  {
+    slug: 'knitted',
+    code: 'K',
+    label: 'Knitted Elastic',
+    description: 'Soft, lightweight elastics for underwear and medical use',
+    styles: ['Standard', 'Ribbed / Patterned'],
+    image: '/images/studio-knitted.jpg',
+  },
+  {
+    slug: 'webbing',
+    code: 'W',
+    label: 'Non-Elastic Webbing / Tape',
+    description: 'Rigid woven tapes and webbing for straps and industrial use',
+    styles: ['Standard', 'Striped', 'Custom'],
+    image: '/images/4.jpg',
+  },
 ];
 
 /** Manufacturing capability limits (from the Interconverters capability matrix). */
@@ -116,6 +207,9 @@ export const TEXT_FONTS = [
 
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024; // 2 MB
 export const ACCEPTED_ARTWORK_MIME = ['image/png', 'image/jpeg', 'image/svg+xml'];
+
+export const STRETCH_DISCLAIMER =
+  'Stretch visualization is an approximation. Actual elongation, recovery and appearance depend on the approved construction and physical sample.';
 
 export const TECHNICAL_REVIEW_DISCLAIMER =
   'Final construction and manufacturability are subject to review and approval by the Interconverters technical team.';
