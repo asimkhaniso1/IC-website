@@ -21,8 +21,6 @@ import { svgToPngDataUrl } from './exportPng';
 const RULER_LEFT = 18;
 const RULER_TOP = 14;
 const RIGHT_PAD = 8;
-/** Fabric width the hand-authored application silhouettes were drawn against. */
-const REFERENCE_APP_WIDTH_MM = 30;
 
 function jacquardCycleMm(spec: DesignSpec): number {
   if (spec.family !== 'J') return 0;
@@ -80,12 +78,14 @@ export default function FabricPreview({
 
   if (mode === 'application') {
     const cfg = getSilhouette(spec.application);
-    const factor = Math.min(2.2, Math.max(0.6, spec.widthMm / REFERENCE_APP_WIDTH_MM));
     const pad = 20;
-    stageW = (cfg.viewW + pad * 2) * factor;
-    stageH = (cfg.viewH + pad * 2) * factor;
+    stageW = cfg.viewW + pad * 2;
+    stageH = cfg.viewH + pad * 2;
+    // Cap how wide the strip renders inside the illustration so wide fabrics
+    // don't swallow the line art (mode is illustrative, not to scale).
+    const k = Math.min(1, cfg.bandMaxWidthMm / Math.max(heightMm, 0.5));
     content = (
-      <g transform={`scale(${factor}) translate(${pad}, ${pad})`}>
+      <g transform={`translate(${pad}, ${pad})`}>
         {/* white backdrop so the line art reads clearly against the workshop grid */}
         <rect
           x={-pad + 2}
@@ -97,13 +97,19 @@ export default function FabricPreview({
           stroke="#e2e8f0"
           strokeWidth={0.8}
         />
-        <g fill="none" stroke="#64748b" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" opacity={0.85}>
+        <g fill="none" stroke="#64748b" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" opacity={0.85}>
           {cfg.paths.map((d, i) => (
             <path key={i} d={d} />
           ))}
         </g>
-        <g transform={`translate(${cfg.bandX}, ${cfg.bandY}) rotate(${cfg.bandRotationDeg})`}>
-          <FabricStrip spec={spec} x={0} y={-heightMm / 2} lengthMm={cfg.bandLengthMm} idPrefix={`${idPrefix}-app`} />
+        <g transform={`translate(${cfg.bandX}, ${cfg.bandY}) rotate(${cfg.bandRotationDeg}) scale(${k})`}>
+          <FabricStrip
+            spec={spec}
+            x={0}
+            y={-heightMm / 2}
+            lengthMm={cfg.bandLengthMm / k}
+            idPrefix={`${idPrefix}-app`}
+          />
         </g>
       </g>
     );
