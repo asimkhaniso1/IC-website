@@ -18,7 +18,7 @@ import {
   safeErrorMessage,
   sendError,
   sendJson,
-} from './_shared';
+} from './_shared.js';
 
 export const config = { maxDuration: 60 };
 

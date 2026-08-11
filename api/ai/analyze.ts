@@ -15,7 +15,6 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
-import type { DesignSpec } from '../../src/lib/types';
 import {
   base64ByteLength,
   getGeminiApiKey,
@@ -24,7 +23,10 @@ import {
   safeErrorMessage,
   sendError,
   sendJson,
-} from './_shared';
+} from './_shared.js';
+
+/** Minimal structural type — api/ stays standalone from src/ (see _shared.ts). */
+type DesignSpec = { family: string } & Record<string, unknown>;
 
 export const config = { maxDuration: 30 };
 
