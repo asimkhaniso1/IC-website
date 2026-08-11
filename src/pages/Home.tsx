@@ -187,7 +187,6 @@ const Navbar = () => {
     { name: 'About', href: '#about' },
     { name: 'Products', href: '#products' },
     { name: 'Design Studio', href: '/studio' },
-    { name: 'Capabilities', href: '#capabilities' },
     { name: 'Quality', href: '#quality' },
     { name: 'Contact', href: '#contact' },
   ];
@@ -365,6 +364,72 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Capabilities Matrix */}
+      <section id="capabilities" className="py-24 bg-slate-900 text-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-blue-400 font-bold tracking-widest text-sm uppercase mb-4">Technical Matrix</h2>
+            <h3 className="text-3xl md:text-5xl font-bold mb-6">What We Offer. What We Can Do.</h3>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 md:p-10 shadow-2xl overflow-x-auto">
+            <div className="min-w-[800px]">
+              <div className="grid grid-cols-4 bg-[#004A99] py-5 px-4 rounded-xl text-white font-bold mb-4">
+                <div>Feature</div>
+                <div>Woven Fabrics</div>
+                <div>Knitted Fabrics</div>
+                <div>Braided</div>
+              </div>
+
+              <CapabilityRow
+                label="Item"
+                woven="Tapes, Straps"
+                knitted="Nets, Raschel goods"
+                braided="Braids, Cords, Hoses"
+              />
+              <CapabilityRow
+                label="Property"
+                woven="Elastic, Transverse"
+                knitted="Elastic, Bi-elastic"
+                braided="Elastic, Non-elastic"
+              />
+              <CapabilityRow
+                label="Width/Dia"
+                woven="2mm - 320mm"
+                knitted="Depends on design"
+                braided="0.5mm - 65mm"
+              />
+              <CapabilityRow
+                label="Elongation"
+                woven="10% - 200%"
+                knitted="Depends on design"
+                braided="5% - 300%"
+              />
+              <CapabilityRow
+                label="Materials"
+                woven="PES, Cotton, Aramid"
+                knitted="Nylon, Polyacrylic"
+                braided="Lycra, Silicone, PES"
+              />
+            </div>
+
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { title: 'Finishing', desc: 'Low-shrinkage, Flame retardant, Water-repellent' },
+                { title: 'Packaging', desc: 'Bobbins, Cable drums, Cardboard boxes' },
+                { title: 'Cutting', desc: 'Ultrasonic, Laser cuts, Hot & Bevel' },
+                { title: 'R&D', desc: 'In cooperation with leading research institutions' },
+              ].map((item, i) => (
+                <div key={i} className="bg-slate-50 p-6 rounded-xl">
+                  <h4 className="text-[#004A99] font-bold text-sm mb-2">{item.title}</h4>
+                  <p className="text-slate-600 text-xs leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Quote Section */}
       <section className="bg-[#004A99] py-20 text-center relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
@@ -519,72 +584,6 @@ export default function Home() {
           <p className="mt-8 text-xs text-slate-500 uppercase tracking-widest">
             Jacquard Elastic · Woven Elastic · Knitted Elastic · Woven Tape
           </p>
-        </div>
-      </section>
-
-      {/* Capabilities Matrix */}
-      <section id="capabilities" className="py-24 bg-slate-900 text-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-blue-400 font-bold tracking-widest text-sm uppercase mb-4">Technical Matrix</h2>
-            <h3 className="text-3xl md:text-5xl font-bold mb-6">What We Offer. What We Can Do.</h3>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 md:p-10 shadow-2xl overflow-x-auto">
-            <div className="min-w-[800px]">
-              <div className="grid grid-cols-4 bg-[#004A99] py-5 px-4 rounded-xl text-white font-bold mb-4">
-                <div>Feature</div>
-                <div>Woven Fabrics</div>
-                <div>Knitted Fabrics</div>
-                <div>Braided</div>
-              </div>
-
-              <CapabilityRow
-                label="Item"
-                woven="Tapes, Straps"
-                knitted="Nets, Raschel goods"
-                braided="Braids, Cords, Hoses"
-              />
-              <CapabilityRow
-                label="Property"
-                woven="Elastic, Transverse"
-                knitted="Elastic, Bi-elastic"
-                braided="Elastic, Non-elastic"
-              />
-              <CapabilityRow
-                label="Width/Dia"
-                woven="2mm - 320mm"
-                knitted="Depends on design"
-                braided="0.5mm - 65mm"
-              />
-              <CapabilityRow
-                label="Elongation"
-                woven="10% - 200%"
-                knitted="Depends on design"
-                braided="5% - 300%"
-              />
-              <CapabilityRow
-                label="Materials"
-                woven="PES, Cotton, Aramid"
-                knitted="Nylon, Polyacrylic"
-                braided="Lycra, Silicone, PES"
-              />
-            </div>
-
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { title: 'Finishing', desc: 'Low-shrinkage, Flame retardant, Water-repellent' },
-                { title: 'Packaging', desc: 'Bobbins, Cable drums, Cardboard boxes' },
-                { title: 'Cutting', desc: 'Ultrasonic, Laser cuts, Hot & Bevel' },
-                { title: 'R&D', desc: 'In cooperation with leading research institutions' },
-              ].map((item, i) => (
-                <div key={i} className="bg-slate-50 p-6 rounded-xl">
-                  <h4 className="text-[#004A99] font-bold text-sm mb-2">{item.title}</h4>
-                  <p className="text-slate-600 text-xs leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
@@ -754,12 +753,14 @@ export default function Home() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
             <div className="col-span-1 lg:col-span-2">
               <div className="flex items-center gap-3 mb-6">
-                <img
-                  src="/images/LOGO1.png"
-                  alt="Interconverters Logo Footer"
-                  className="h-12 w-auto object-contain brightness-0 invert"
-                  referrerPolicy="no-referrer"
-                />
+                <span className="inline-flex items-center justify-center rounded-lg bg-white p-1.5">
+                  <img
+                    src="/images/LOGO1.png"
+                    alt="Interconverters Logo Footer"
+                    className="h-9 w-auto object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                </span>
                 <div className="flex flex-col">
                   <span className="font-bold text-white text-2xl leading-none tracking-tight">INTERCONVERTERS</span>
                   <span className="text-[10px] font-medium tracking-[0.3em] text-[#004A99]">PVT. LTD.</span>

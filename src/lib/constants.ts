@@ -20,7 +20,7 @@ export const FAMILIES: {
     label: 'Jacquard Elastic',
     description:
       'Weave your logo, brand name or pattern directly into the elastic. Ideal for branded waistbands and premium trims.',
-    image: '/images/1.jpg',
+    image: '/images/studio-jacquard.jpg',
   },
   {
     code: 'W',
@@ -28,7 +28,7 @@ export const FAMILIES: {
     label: 'Woven Elastic / Tape',
     description:
       'Durable woven elastics and non-elastic tapes with custom stripes, edges and constructions.',
-    image: '/images/6.jpg',
+    image: '/images/studio-woven.jpg',
   },
   {
     code: 'K',
@@ -36,7 +36,7 @@ export const FAMILIES: {
     label: 'Knitted Elastic',
     description:
       'Soft, lightweight knitted elastics for underwear, medical and general garment applications.',
-    image: '/images/Knitted-High-Elastic-Bandage.jpg',
+    image: '/images/studio-knitted.jpg',
   },
 ];
 
