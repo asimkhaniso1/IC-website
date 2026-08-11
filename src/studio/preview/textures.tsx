@@ -31,7 +31,7 @@ export const WOVEN_RIB_LANE_MM: Record<RibAppearance, number> = {
   bold: 3.2,
 };
 
-/** Column width (mm) for the knitted ribbed column texture, by appearance. */
+/** Wale (rib line) height (mm) for the knitted ribbed texture, by appearance. */
 export const KNIT_RIB_COLUMN_MM: Record<RibAppearance, number> = {
   fine: 1,
   medium: 1.8,
@@ -65,29 +65,34 @@ export function WovenRibTexture({
 }
 
 /**
- * Knitted "ribbed" style: vertical rib columns (alternating tint) tiled
- * along the length of the strip, layered over the base knit-loop texture to
- * read as a rib-knit surface.
+ * Knitted "ribbed" style: like the woven cords, the wales (rib lines) of a
+ * narrow knitted elastic run in the PRODUCTION direction — along the length
+ * of the tape — so the lanes are stacked across the width, exactly like the
+ * woven rib orientation. The knit version reads softer: gentler contrast and
+ * a thin groove line between wales, with the knit-loop chevron texture
+ * layered on top elsewhere.
  */
 export function KnittedRibTexture({
   id,
   baseColor,
-  heightMm,
   ribAppearance,
 }: {
   id: string;
   baseColor: string;
-  heightMm: number;
+  /** Kept optional for call-site compatibility; unused. */
+  heightMm?: number;
   ribAppearance: RibAppearance;
 }) {
-  const col = KNIT_RIB_COLUMN_MM[ribAppearance];
-  const light = shade(baseColor, 0.14);
-  const dark = shade(baseColor, -0.16);
-  const h = Math.max(heightMm, 0.5);
+  const lane = KNIT_RIB_COLUMN_MM[ribAppearance];
+  const light = shade(baseColor, 0.1);
+  const dark = shade(baseColor, -0.08);
+  const groove = shade(baseColor, -0.28);
   return (
-    <pattern id={id} width={col * 2} height={h} patternUnits="userSpaceOnUse">
-      <rect x={0} y={0} width={col} height={h} fill={light} />
-      <rect x={col} y={0} width={col} height={h} fill={dark} />
+    <pattern id={id} width={4} height={lane * 2} patternUnits="userSpaceOnUse">
+      <rect x={0} y={0} width={4} height={lane} fill={light} />
+      <rect x={0} y={lane} width={4} height={lane} fill={dark} />
+      <line x1={0} y1={lane} x2={4} y2={lane} stroke={groove} strokeWidth={Math.min(0.25, lane * 0.14)} opacity={0.5} />
+      <line x1={0} y1={lane * 2} x2={4} y2={lane * 2} stroke={groove} strokeWidth={Math.min(0.25, lane * 0.14)} opacity={0.5} />
     </pattern>
   );
 }
