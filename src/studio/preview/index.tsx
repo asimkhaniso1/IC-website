@@ -81,11 +81,23 @@ export default function FabricPreview({
   if (mode === 'application') {
     const cfg = getSilhouette(spec.application);
     const factor = Math.min(2.2, Math.max(0.6, spec.widthMm / REFERENCE_APP_WIDTH_MM));
-    stageW = cfg.viewW * factor;
-    stageH = cfg.viewH * factor;
+    const pad = 20;
+    stageW = (cfg.viewW + pad * 2) * factor;
+    stageH = (cfg.viewH + pad * 2) * factor;
     content = (
-      <g transform={`scale(${factor})`}>
-        <g fill="none" stroke="#cbd5e1" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <g transform={`scale(${factor}) translate(${pad}, ${pad})`}>
+        {/* white backdrop so the line art reads clearly against the workshop grid */}
+        <rect
+          x={-pad + 2}
+          y={-pad + 2}
+          width={cfg.viewW + pad * 2 - 4}
+          height={cfg.viewH + pad * 2 - 4}
+          rx={8}
+          fill="#ffffff"
+          stroke="#e2e8f0"
+          strokeWidth={0.8}
+        />
+        <g fill="none" stroke="#64748b" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" opacity={0.85}>
           {cfg.paths.map((d, i) => (
             <path key={i} d={d} />
           ))}
