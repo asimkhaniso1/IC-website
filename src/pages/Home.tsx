@@ -186,6 +186,7 @@ const Navbar = () => {
     { name: 'Home', href: '#home' },
     { name: 'About', href: '#about' },
     { name: 'Products', href: '#products' },
+    { name: 'Design Studio', href: '/studio' },
     { name: 'Capabilities', href: '#capabilities' },
     { name: 'Quality', href: '#quality' },
     { name: 'Contact', href: '#contact' },
@@ -478,6 +479,46 @@ export default function Home() {
               image="/images/4.jpg"
             />
           </div>
+        </div>
+      </section>
+
+      {/* Design Studio CTA */}
+      <section id="design-studio" className="relative py-28 bg-slate-950 text-white overflow-hidden">
+        {/* woven strip motif */}
+        <div className="absolute inset-0 opacity-20" aria-hidden="true">
+          <div className="absolute -left-10 top-10 right-0 h-10 bg-gradient-to-r from-[#004A99] via-blue-400 to-transparent -rotate-3" />
+          <div className="absolute -left-10 top-28 right-0 h-4 bg-gradient-to-r from-amber-400 via-amber-500 to-transparent -rotate-3" />
+          <div className="absolute -left-10 bottom-24 right-0 h-8 bg-gradient-to-r from-transparent via-slate-400 to-slate-600 rotate-2" />
+          <div className="absolute -left-10 bottom-10 right-0 h-3 bg-gradient-to-r from-transparent via-[#004A99] to-blue-500 rotate-2" />
+        </div>
+        <div className="relative max-w-5xl mx-auto px-6 text-center">
+          <p className="text-blue-400 font-bold tracking-widest text-sm uppercase mb-4">New — Online Design Studio</p>
+          <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+            DESIGN YOUR <span className="text-blue-400">NARROW FABRIC</span>
+          </h2>
+          <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-10">
+            Create your custom elastic, jacquard or woven tape online. Configure width, colors and your
+            own logo, preview the fabric in real time, and send it to our technical team as a structured
+            sample request.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href="/studio"
+              className="px-8 py-4 bg-[#004A99] hover:bg-blue-700 text-white rounded-lg font-bold transition-all shadow-lg shadow-blue-900/40 inline-flex items-center gap-2"
+            >
+              START DESIGNING
+              <ArrowRight className="w-5 h-5" />
+            </a>
+            <a
+              href="#products"
+              className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg font-bold transition-all"
+            >
+              EXPLORE PRODUCTS
+            </a>
+          </div>
+          <p className="mt-8 text-xs text-slate-500 uppercase tracking-widest">
+            Jacquard Elastic · Woven Elastic · Knitted Elastic · Woven Tape
+          </p>
         </div>
       </section>
 
