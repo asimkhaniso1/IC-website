@@ -237,45 +237,8 @@ function DetailBody({ id }: { id: string }) {
     }
   }
 
-  // --- create technical revision ---
-  const [revOpen, setRevOpen] = useState(false);
-  const [revSpecText, setRevSpecText] = useState('');
-  const [revNotes, setRevNotes] = useState('');
-  const [revError, setRevError] = useState<string | null>(null);
-  const [revBusy, setRevBusy] = useState(false);
-
-  function openRevisionModal() {
-    if (!detail) return;
-    setRevSpecText(JSON.stringify(detail.project.spec, null, 2));
-    setRevNotes('');
-    setRevError(null);
-    setRevOpen(true);
-  }
-
-  async function submitRevision() {
-    if (!detail) return;
-    let parsed: DesignSpec;
-    try {
-      parsed = JSON.parse(revSpecText) as DesignSpec;
-    } catch {
-      setRevError('That is not valid JSON.');
-      return;
-    }
-    if (!parsed || typeof parsed !== 'object' || parsed.family !== detail.project.family) {
-      setRevError(`The spec must keep "family": "${detail.project.family}".`);
-      return;
-    }
-    setRevBusy(true);
-    try {
-      await createAdminRevision(detail.project.id, parsed, revNotes.trim() || undefined, actorEmail);
-      setRevOpen(false);
-      setRefreshKey((k) => k + 1);
-    } catch (err) {
-      setRevError(friendly(err, 'Could not create the revision.'));
-    } finally {
-      setRevBusy(false);
-    }
-  }
+  // Customer-design revisions are made in the visual studio editor
+  // (/admin/designs/:id/edit) — no raw-JSON editing in the dashboard.
 
   const familyLabel = useMemo(
     () => (detail ? (FAMILY_BY_CODE[detail.project.family]?.label ?? detail.project.family) : ''),
@@ -469,10 +432,10 @@ function DetailBody({ id }: { id: string }) {
           <Panel
             title="Revision History"
             action={
-              <Tooltip text="Edits the customer's design requirement JSON and adds a new revision. This is separate from the internal production specification below.">
-                <Button variant="secondary" size="sm" onClick={openRevisionModal}>
+              <Tooltip text="Opens this design in the visual studio editor and saves your changes as a new revision. This is separate from the internal production specification below.">
+                <Button variant="secondary" size="sm" onClick={() => navigate(`/admin/designs/${id}/edit`)}>
                   <Plus className="w-3.5 h-3.5" />
-                  Revise Customer Design
+                  Edit in Studio
                 </Button>
               </Tooltip>
             }
@@ -521,44 +484,6 @@ function DetailBody({ id }: { id: string }) {
         </div>
       </div>
 
-      <Modal open={revOpen} onClose={() => setRevOpen(false)} title="Revise Customer Design (new revision)" wide>
-        <div className="flex flex-col gap-4">
-          <p className="text-xs text-slate-400 italic">
-            This edits the CUSTOMER's design requirement JSON and creates a new revision of it — it is not the
-            internal production specification (see the Production Specification panel above). The family must
-            remain <span className="font-mono">"{project.family}"</span>.
-          </p>
-          <Field label="Spec JSON" htmlFor="rev-spec">
-            <textarea
-              id="rev-spec"
-              value={revSpecText}
-              onChange={(e) => setRevSpecText(e.target.value)}
-              rows={16}
-              spellCheck={false}
-              className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 bg-slate-950 text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-600"
-            />
-          </Field>
-          <Field label="Revision Notes" htmlFor="rev-notes">
-            <TextArea
-              id="rev-notes"
-              rows={2}
-              value={revNotes}
-              onChange={(e) => setRevNotes(e.target.value)}
-              placeholder="What changed and why…"
-            />
-          </Field>
-          {revError && <p className="text-xs font-medium text-red-600">{revError}</p>}
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setRevOpen(false)} disabled={revBusy}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={() => void submitRevision()} disabled={revBusy}>
-              {revBusy && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save Revision
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
