@@ -15,7 +15,7 @@ export function AdminChrome({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-slate-950 text-white sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
-          <Link to="/admin" className="flex items-center gap-3 min-w-0">
+          <Link to="/" className="flex items-center gap-3 min-w-0" title="Go to interconverters.com homepage">
             <img src={COMPANY.logo} alt="" className="h-7 w-auto shrink-0" />
             <div className="min-w-0">
               <p className="text-sm font-bold leading-tight truncate">{COMPANY.name}</p>
@@ -23,6 +23,14 @@ export function AdminChrome({ children }: { children: ReactNode }) {
             </div>
           </Link>
           <div className="flex items-center gap-4 shrink-0">
+            <Link
+              to="/admin"
+              className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
+                !onSettings ? 'text-white' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              Dashboard
+            </Link>
             <Link
               to="/admin/settings"
               className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
