@@ -259,6 +259,95 @@ const Navbar = () => {
   );
 };
 
+const contactInputClass =
+  'w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#004A99] transition-all';
+
+/** Contact form — submissions are emailed to sales@interconverters.com via /api/notify. */
+const ContactForm = () => {
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', subject: '', message: '', _hp: '' });
+  const [status, setStatus] = useState<'idle' | 'sending' | 'ok' | 'error'>('idle');
+
+  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.firstName.trim() || !form.email.trim() || !form.message.trim()) return;
+    setStatus('sending');
+    try {
+      const res = await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'contact', data: { ...form, name: `${form.firstName} ${form.lastName}`.trim() } }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setStatus('ok');
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  if (status === 'ok') {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12 text-center">
+        <CheckCircle2 className="w-10 h-10 text-green-600" />
+        <p className="text-lg font-bold text-slate-900">Thank you — your message has been sent.</p>
+        <p className="text-sm text-slate-500">Our team will get back to you at {form.email} shortly.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form className="space-y-6" onSubmit={submit}>
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <label className="text-xs font-bold uppercase tracking-widest text-slate-500">First Name *</label>
+          <input type="text" required value={form.firstName} onChange={set('firstName')} className={contactInputClass} />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Last Name</label>
+          <input type="text" value={form.lastName} onChange={set('lastName')} className={contactInputClass} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Email Address *</label>
+        <input type="email" required value={form.email} onChange={set('email')} className={contactInputClass} />
+      </div>
+      <div className="space-y-2">
+        <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Subject / Application Field</label>
+        <input type="text" value={form.subject} onChange={set('subject')} className={contactInputClass} />
+      </div>
+      <div className="space-y-2">
+        <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Message *</label>
+        <textarea rows={4} required value={form.message} onChange={set('message')} className={contactInputClass} />
+      </div>
+      {/* Honeypot — humans never see or fill this. */}
+      <input
+        type="text"
+        value={form._hp}
+        onChange={set('_hp')}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="hidden"
+      />
+      {status === 'error' && (
+        <p className="text-sm font-medium text-red-600">
+          Sorry, your message could not be sent right now. Please email us directly at{' '}
+          <a href="mailto:sales@interconverters.com" className="underline">sales@interconverters.com</a>.
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={status === 'sending'}
+        className="w-full bg-[#004A99] text-white font-bold py-4 rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/10 disabled:bg-slate-300"
+      >
+        {status === 'sending' ? 'Sending…' : 'Send Inquiry Request'}
+      </button>
+    </form>
+  );
+};
+
 const ProductCard = ({ title, description, features, image }: { title: string, description: string, features: string[], image: string }) => (
   <motion.div
     whileHover={{ y: -5 }}
@@ -715,33 +804,7 @@ export default function Home() {
 
             <div className="lg:w-3/5 p-12 bg-white">
               <h4 className="text-2xl font-bold mb-8">Send a Message</h4>
-              <form className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500">First Name</label>
-                    <input type="text" className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#004A99] transition-all" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Last Name</label>
-                    <input type="text" className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#004A99] transition-all" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Email Address</label>
-                  <input type="email" className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#004A99] transition-all" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Subject / Application Field</label>
-                  <input type="text" className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#004A99] transition-all" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Message</label>
-                  <textarea rows={4} className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#004A99] transition-all"></textarea>
-                </div>
-                <button className="w-full bg-[#004A99] text-white font-bold py-4 rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/10">
-                  Send Inquiry Request
-                </button>
-              </form>
+              <ContactForm />
             </div>
           </div>
         </div>

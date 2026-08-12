@@ -139,6 +139,32 @@ export const RfqDialog: React.FC<RfqDialogProps> = ({ design, previewPng, aiRevi
       const res = await getStorageAdapter().submitRfq(input);
       setResult(res);
       setStatus(res.ok ? 'success' : 'failure');
+      if (res.ok) {
+        // Best-effort email notification to the sales inbox — never blocks
+        // or affects the submission result (the RFQ is already stored).
+        void fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: 'rfq',
+            data: {
+              designCode: design.designCode,
+              requestType: kind === 'sample' ? 'Sample request' : 'Quotation request',
+              contactName: input.contactName,
+              company: input.company ?? '',
+              email: input.email,
+              phone: input.phone ?? '',
+              country: input.country ?? '',
+              application: input.application ?? '',
+              quantity: input.quantity ? `${input.quantity} ${input.quantityUnit ?? ''}`.trim() : '',
+              annualRequirement: input.annualRequirement ?? '',
+              targetPrice: input.targetPrice ?? '',
+              targetDate: input.targetDate ?? '',
+              message: input.message ?? '',
+            },
+          }),
+        }).catch(() => undefined);
+      }
     } catch (err) {
       setResult({ ok: false, reason: err instanceof Error ? err.message : 'Something went wrong.' });
       setStatus('failure');
