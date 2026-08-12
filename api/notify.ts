@@ -1,24 +1,29 @@
 /**
  * POST /api/notify — forwards website form submissions to the Interconverters
- * sales inbox via Resend (https://resend.com).
+ * sales inbox. Two interchangeable transports, chosen by which env vars are
+ * set (SMTP wins when both are present):
+ *
+ *   SMTP (recommended — your own mailbox, no new accounts):
+ *     SMTP_HOST, SMTP_PORT (465 or 587), SMTP_USER, SMTP_PASS
+ *     e.g. the credentials of sales@interconverters.com at your email host.
+ *
+ *   Resend (https://resend.com):
+ *     RESEND_API_KEY (+ domain verification for good deliverability)
+ *
+ *   Shared:
+ *     NOTIFY_TO   — recipient, default sales@interconverters.com
+ *     NOTIFY_FROM — sender, default SMTP_USER (SMTP) / Resend sandbox (Resend)
  *
  * Request: { kind: 'rfq' | 'contact', data: Record<string, string> }
  * The customer's email (data.email) becomes the Reply-To so the team can
  * answer directly.
- *
- * Env (Vercel):
- *   RESEND_API_KEY  — required for sending (503 not_configured otherwise)
- *   NOTIFY_TO       — recipient, default sales@interconverters.com
- *   NOTIFY_FROM     — verified sender; default Resend's sandbox sender
- *                     (works only until the interconverters.com domain is
- *                     verified in Resend — then set e.g.
- *                     "Interconverters Website <noreply@interconverters.com>")
  *
  * Server-side only. This endpoint sends to a FIXED internal recipient, never
  * to an address chosen by the request, so it cannot be abused as an open
  * relay.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import nodemailer from 'nodemailer';
 
 const DEFAULT_TO = 'sales@interconverters.com';
 const DEFAULT_FROM = 'Interconverters Website <onboarding@resend.dev>';
@@ -47,9 +52,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey || !apiKey.trim()) {
-    res.status(503).json({ error: 'not_configured', message: 'RESEND_API_KEY is not set on the server.' });
+  const smtp = {
+    host: process.env.SMTP_HOST?.trim(),
+    port: Number(process.env.SMTP_PORT ?? 465),
+    user: process.env.SMTP_USER?.trim(),
+    pass: process.env.SMTP_PASS,
+  };
+  const smtpConfigured = Boolean(smtp.host && smtp.user && smtp.pass);
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  if (!smtpConfigured && !resendKey) {
+    res.status(503).json({
+      error: 'not_configured',
+      message: 'No email transport configured — set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS or RESEND_API_KEY.',
+    });
     return;
   }
 
@@ -104,13 +119,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       : '') +
     `</p></div>`;
 
+  const to = process.env.NOTIFY_TO?.trim() || DEFAULT_TO;
+
   try {
+    if (smtpConfigured) {
+      // Preferred: the factory's own mailbox via its email host's SMTP.
+      const transporter = nodemailer.createTransport({
+        host: smtp.host,
+        port: smtp.port,
+        secure: smtp.port === 465,
+        auth: { user: smtp.user, pass: smtp.pass },
+      });
+      await transporter.sendMail({
+        from: process.env.NOTIFY_FROM?.trim() || smtp.user,
+        to,
+        subject,
+        html,
+        ...(replyTo ? { replyTo } : {}),
+      });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey.trim()}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: process.env.NOTIFY_FROM?.trim() || DEFAULT_FROM,
-        to: [process.env.NOTIFY_TO?.trim() || DEFAULT_TO],
+        to: [to],
         subject,
         html,
         ...(replyTo ? { reply_to: replyTo } : {}),
