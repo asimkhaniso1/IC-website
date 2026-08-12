@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Badge, Field, Select, TextArea, TextInput } from '../../components/ui/index';
-import { CONSTRUCTION_LIBRARY } from '../../lib/constants';
+import { useCapabilities } from '../../lib/capabilities';
 import type { DesignSpec, TechnicalDetails } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
 
@@ -55,7 +55,7 @@ function ConstructionTypeField<S extends DesignSpec>({
   spec: S;
   onChange: (next: S) => void;
 }) {
-  const library = CONSTRUCTION_LIBRARY[spec.family] ?? [];
+  const library = useCapabilities()[spec.family]?.constructions ?? [];
   const current = spec.technical?.constructionType ?? '';
   const inLibrary = library.includes(current);
   const selectValue = current === '' ? '' : inLibrary ? current : 'Other';

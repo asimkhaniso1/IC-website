@@ -1,10 +1,8 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { Badge, Button } from '../../../components/ui/index';
-import { CAPABILITIES } from '../../../lib/constants';
+import { useCapabilities } from '../../../lib/capabilities';
 import type { JacquardSpec } from '../../../lib/types';
 import { ColorField } from './ColorField';
-
-const MAX_COLORS = CAPABILITIES.J.maxColors;
 
 function countColors(spec: JacquardSpec): number {
   const set = new Set<string>([spec.baseColor.toLowerCase(), spec.fg.toLowerCase()]);
@@ -22,15 +20,16 @@ export function ColorsPanel({
   spec: JacquardSpec;
   onChange: (next: JacquardSpec) => void;
 }) {
+  const maxColors = useCapabilities().J.maxColors;
   const used = countColors(spec);
-  const atLimit = used >= MAX_COLORS;
+  const atLimit = used >= maxColors;
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
       <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
         <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Colors</h3>
         <Badge tone={atLimit ? 'amber' : 'slate'}>
-          {used}/{MAX_COLORS} used
+          {used}/{maxColors} used
         </Badge>
       </header>
       <div className="p-4 flex flex-col gap-4">
@@ -135,7 +134,7 @@ export function ColorsPanel({
           </Button>
           {atLimit && (
             <p className="text-[11px] text-amber-600 font-medium">
-              Color limit reached ({MAX_COLORS}) for this product type.
+              Color limit reached ({maxColors}) for this product type.
             </p>
           )}
         </div>

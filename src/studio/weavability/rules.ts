@@ -8,7 +8,7 @@
  * review (see TECHNICAL_REVIEW_DISCLAIMER) — these rules are a helpful
  * heuristic, not a guarantee.
  */
-import { CAPABILITIES } from '../../lib/constants';
+import { defaultCapabilities, type FamilyCapabilities } from '../../lib/capabilities';
 import { contrastRatio, normalizeHex } from '../../lib/color';
 import type {
   DesignSpec,
@@ -52,8 +52,8 @@ function collectColors(spec: DesignSpec): string[] {
   return unique;
 }
 
-function checkColorCount(spec: DesignSpec, issues: WeavabilityIssue[]): void {
-  const max = CAPABILITIES[spec.family].maxColors;
+function checkColorCount(spec: DesignSpec, cap: FamilyCapabilities, issues: WeavabilityIssue[]): void {
+  const max = cap.maxColors;
   const count = collectColors(spec).length;
   if (count > max) {
     issues.push({
@@ -71,8 +71,7 @@ function checkColorCount(spec: DesignSpec, issues: WeavabilityIssue[]): void {
   }
 }
 
-function checkWidth(spec: DesignSpec, issues: WeavabilityIssue[]): void {
-  const cap = CAPABILITIES[spec.family];
+function checkWidth(spec: DesignSpec, cap: FamilyCapabilities, issues: WeavabilityIssue[]): void {
   if (spec.widthMm < cap.minWidthMm || spec.widthMm > cap.maxWidthMm) {
     issues.push({
       code: 'width-out-of-range',
@@ -95,25 +94,26 @@ function checkContrast(fg: string, bg: string, label: string, issues: Weavabilit
   }
 }
 
-function checkJacquard(spec: JacquardSpec, issues: WeavabilityIssue[]): void {
+function checkJacquard(spec: JacquardSpec, cap: FamilyCapabilities, issues: WeavabilityIssue[]): void {
   checkContrast(spec.fg, spec.baseColor, 'motif', issues);
 
+  const minText = cap.minTextHeightMm;
   for (const item of spec.artwork) {
     if (item.kind === 'text') {
       const h = item.transform.heightMm;
-      if (h < 2.5) {
+      if (h < minText * 0.625) {
         issues.push({
           code: 'text-too-small',
           severity: 'error',
           message: `Text "${item.text ?? ''}" is too small to weave clearly at ${h.toFixed(1)} mm tall.`,
-          hint: 'Increase the text height to at least 4 mm.',
+          hint: `Increase the text height to at least ${minText} mm.`,
         });
-      } else if (h < 4) {
+      } else if (h < minText) {
         issues.push({
           code: 'text-too-small',
           severity: 'warn',
           message: `Text "${item.text ?? ''}" may be too small to weave clearly at this size.`,
-          hint: 'Consider increasing the text height to at least 4 mm.',
+          hint: `Consider increasing the text height to at least ${minText} mm.`,
         });
       }
       if (h > spec.widthMm * 0.85) {
@@ -204,9 +204,9 @@ function checkWoven(spec: WovenSpec, issues: WeavabilityIssue[]): void {
   }
 }
 
-function checkElongation(spec: DesignSpec, issues: WeavabilityIssue[]): void {
+function checkElongation(spec: DesignSpec, cap: FamilyCapabilities, issues: WeavabilityIssue[]): void {
   if (!spec.elastic || spec.elasticityClass !== 'custom') return;
-  if ((spec.customElongationPct ?? 0) > 200) {
+  if ((spec.customElongationPct ?? 0) > cap.elongation.max) {
     issues.push({
       code: 'elongation-high',
       severity: 'warn',
@@ -216,16 +216,19 @@ function checkElongation(spec: DesignSpec, issues: WeavabilityIssue[]): void {
   }
 }
 
-export function checkWeavability(spec: DesignSpec): WeavabilityResult {
+export function checkWeavability(spec: DesignSpec, capabilities?: FamilyCapabilities): WeavabilityResult {
   const issues: WeavabilityIssue[] = [];
+  // Live rules from the admin-editable capability library when supplied;
+  // hardcoded defaults otherwise (offline / older call sites).
+  const cap = capabilities ?? defaultCapabilities()[spec.family];
 
-  checkColorCount(spec, issues);
-  checkWidth(spec, issues);
-  checkElongation(spec, issues);
+  checkColorCount(spec, cap, issues);
+  checkWidth(spec, cap, issues);
+  checkElongation(spec, cap, issues);
 
   // firmness, style and other optional customer-friendly fields are never
   // required — a spec without them remains fully valid.
-  if (spec.family === 'J') checkJacquard(spec as JacquardSpec, issues);
+  if (spec.family === 'J') checkJacquard(spec as JacquardSpec, cap, issues);
   if (spec.family === 'W') checkWoven(spec as WovenSpec, issues);
 
   let level: Feasibility = 'suitable';

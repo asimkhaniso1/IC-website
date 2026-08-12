@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Field, NumberField } from '../../components/ui/index';
-import { STANDARD_ROLL_LENGTHS_M } from '../../lib/constants';
+import { useCapabilities } from '../../lib/capabilities';
 import type { DesignSpec } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
 import { chipClass } from './chipStyles';
@@ -13,14 +13,15 @@ export function RollLengthField<S extends DesignSpec>({
   spec: S;
   onChange: (next: S) => void;
 }) {
-  const isPreset = STANDARD_ROLL_LENGTHS_M.includes(spec.rollLengthM);
+  const rollLengths = useCapabilities()[spec.family]?.standardRollLengthsM ?? [];
+  const isPreset = rollLengths.includes(spec.rollLengthM);
   const [customOpen, setCustomOpen] = useState(!isPreset);
   const showCustomInput = customOpen || !isPreset;
 
   return (
     <Field label="Roll length" tooltip={GLOSSARY.rollLength}>
       <div className="flex flex-wrap gap-1.5">
-        {STANDARD_ROLL_LENGTHS_M.map((m) => (
+        {rollLengths.map((m) => (
           <button
             key={m}
             type="button"

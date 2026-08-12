@@ -29,6 +29,7 @@ import { useDesignHistory } from '../studio/shell/useDesignHistory';
 import { AiCheckButton } from '../studio/weavability/AiCheckButton';
 import { FeasibilityBadge } from '../studio/weavability/FeasibilityBadge';
 import { checkWeavability } from '../studio/weavability/rules';
+import { useCapabilities } from '../lib/capabilities';
 
 type FamilySlug = 'jacquard' | 'woven' | 'knitted' | 'webbing';
 
@@ -218,15 +219,16 @@ function DesignerWorkspace({
   const [mode, setMode] = useState<PreviewMode>('flat');
   const [showGrid, setShowGrid] = useState(true);
   const [showRuler, setShowRuler] = useState(true);
+  const capabilities = useCapabilities();
   const [weavability, setWeavability] = useState<WeavabilityResult>(() =>
     checkWeavability(initialSpec)
   );
   const previewRef = useRef<PreviewHandle | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setWeavability(checkWeavability(spec)), 400);
+    const t = setTimeout(() => setWeavability(checkWeavability(spec, capabilities[spec.family])), 400);
     return () => clearTimeout(t);
-  }, [spec]);
+  }, [spec, capabilities]);
 
   const [aiPhotoOpen, setAiPhotoOpen] = useState(false);
   const [aiPhoto, setAiPhoto] = useState<AiPhotoState>({ status: 'idle' });

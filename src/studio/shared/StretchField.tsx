@@ -1,5 +1,6 @@
 import { Field, NumberField } from '../../components/ui/index';
 import { ELASTICITY_CLASSES } from '../../lib/constants';
+import { useCapabilities } from '../../lib/capabilities';
 import { clamp } from '../../lib/units';
 import type { DesignSpec, ElasticityClass } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
@@ -24,6 +25,7 @@ export function StretchField<S extends DesignSpec>({
   spec: S;
   onChange: (next: S) => void;
 }) {
+  const elongation = useCapabilities()[spec.family]?.elongation ?? { min: 10, max: 200 };
   if (!spec.elastic) return null;
 
   const active = spec.elasticityClass ?? 'medium';
@@ -51,9 +53,9 @@ export function StretchField<S extends DesignSpec>({
               value={spec.customElongationPct ?? 100}
               suffix="%"
               min={5}
-              max={300}
+              max={elongation.max}
               step={5}
-              onValue={(v) => onChange({ ...spec, customElongationPct: clamp(v, 5, 300) })}
+              onValue={(v) => onChange({ ...spec, customElongationPct: clamp(v, elongation.min, elongation.max) })}
             />
           </Field>
         </div>

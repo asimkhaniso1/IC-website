@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, Lock, Sparkles } from 'lucide-react';
 import type { Family, ProductionSpec, TechnicalDetails } from '../../../lib/types';
-import { CONSTRUCTION_LIBRARY } from '../../../lib/constants';
+import { useCapabilities } from '../../../lib/capabilities';
 import { isSupabaseConfigured } from '../../../lib/supabase';
 import { saveProductionSpec } from '../../../lib/api/admin';
 import { Badge, Button, Field, Modal, Panel, Select, TextArea, TextInput, Tooltip } from '../../../components/ui';
@@ -96,7 +96,7 @@ export function ProductionSpecPanel({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
-  const constructionOptions = CONSTRUCTION_LIBRARY[family] ?? [];
+  const constructionOptions = useCapabilities()[family]?.constructions ?? [];
 
   useEffect(() => {
     const nextDetails = productionSpec?.details ?? emptyDetails();

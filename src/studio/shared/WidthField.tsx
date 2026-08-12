@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Field, NumberField } from '../../components/ui/index';
-import { STANDARD_WIDTHS_MM } from '../../lib/constants';
+import { useCapabilities } from '../../lib/capabilities';
 import { clamp, displayValue, parseToMm } from '../../lib/units';
 import type { DesignSpec, Unit } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
@@ -14,15 +14,19 @@ import { chipClass } from './chipStyles';
 export function WidthField<S extends DesignSpec>({
   spec,
   onChange,
-  minMm,
-  maxMm,
+  minMm: minMmProp,
+  maxMm: maxMmProp,
 }: {
   spec: S;
   onChange: (next: S) => void;
+  /** Fallback bounds — the live capability library takes precedence. */
   minMm: number;
   maxMm: number;
 }) {
-  const presets = STANDARD_WIDTHS_MM.filter((w) => w >= minMm && w <= maxMm);
+  const caps = useCapabilities()[spec.family];
+  const minMm = caps?.minWidthMm ?? minMmProp;
+  const maxMm = caps?.maxWidthMm ?? maxMmProp;
+  const presets = (caps?.standardWidthsMm ?? []).filter((w) => w >= minMm && w <= maxMm);
   const isPreset = presets.includes(spec.widthMm);
   const [customOpen, setCustomOpen] = useState(!isPreset);
   const showCustomInput = customOpen || !isPreset;
