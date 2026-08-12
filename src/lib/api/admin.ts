@@ -497,3 +497,65 @@ export async function listCapabilityRules(
     notes: r.notes ?? undefined,
   }));
 }
+
+// ---------------------------------------------------------------------------
+// Admin settings — capability library editing + staff management
+// ---------------------------------------------------------------------------
+
+export async function updateCapabilityRule(
+  family: Family,
+  ruleKey: string,
+  ruleValue: unknown,
+  notes?: string
+): Promise<void> {
+  const supabase = requireSupabase();
+  const { error } = await supabase
+    .from('capability_rules')
+    .update({ rule_value: ruleValue, notes: notes ?? null, updated_at: new Date().toISOString() })
+    .eq('family', family)
+    .eq('rule_key', ruleKey);
+  if (error) throw friendlyError(error, 'Could not save the capability rule.');
+}
+
+export interface StaffMember {
+  id: string;
+  role: 'admin' | 'technical';
+  fullName?: string;
+  createdAt: string;
+}
+
+export async function listStaff(): Promise<StaffMember[]> {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, role, full_name, created_at')
+    .order('created_at', { ascending: true });
+  if (error) throw friendlyError(error, 'Could not load staff members.');
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    role: r.role as 'admin' | 'technical',
+    fullName: (r.full_name as string | null) ?? undefined,
+    createdAt: r.created_at as string,
+  }));
+}
+
+/**
+ * Registers an existing Supabase Auth user as staff (or updates their role /
+ * name). Creating the auth user itself must be done in the Supabase
+ * dashboard — the browser has no admin auth API access, by design.
+ * Requires the caller to have role 'admin' (enforced by RLS, 0003).
+ */
+export async function upsertStaff(id: string, role: 'admin' | 'technical', fullName?: string): Promise<void> {
+  const supabase = requireSupabase();
+  const { error } = await supabase
+    .from('profiles')
+    .upsert({ id, role, full_name: fullName ?? null }, { onConflict: 'id' });
+  if (error) throw friendlyError(error, 'Could not save the staff member (are you an admin?).');
+}
+
+/** Removes staff access (the auth account itself remains). Admin-only; RLS blocks self-removal. */
+export async function removeStaff(id: string): Promise<void> {
+  const supabase = requireSupabase();
+  const { error } = await supabase.from('profiles').delete().eq('id', id);
+  if (error) throw friendlyError(error, 'Could not remove the staff member (you cannot remove yourself).');
+}

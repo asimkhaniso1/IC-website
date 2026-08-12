@@ -7,6 +7,7 @@ const DesignerPage = lazy(() => import('./pages/DesignerPage'));
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminDesignDetail = lazy(() => import('./pages/admin/AdminDesignDetail'));
+const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 
 function RouteLoading() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/designs/:id" element={<AdminDesignDetail />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
