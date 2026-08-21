@@ -149,6 +149,7 @@ export const RfqDialog: React.FC<RfqDialogProps> = ({ design, previewPng, aiRevi
             kind: 'rfq',
             data: {
               designCode: design.designCode,
+              designUrl: `${COMPANY.website}/studio/${FAMILY_BY_CODE[design.family]?.slug ?? 'jacquard'}/${design.id}`,
               requestType: kind === 'sample' ? 'Sample request' : 'Quotation request',
               contactName: input.contactName,
               company: input.company ?? '',

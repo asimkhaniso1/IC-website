@@ -1,49 +1,67 @@
 /**
- * POST /api/notify — forwards website form submissions to the Interconverters
- * sales inbox. Two interchangeable transports, chosen by which env vars are
- * set (SMTP wins when both are present):
+ * POST /api/notify — emails the CUSTOMER a confirmation of their website
+ * inquiry (RFQ / sample request or contact-form message) and CCs the
+ * Interconverters sales inbox so the team has the same copy.
  *
- *   SMTP (recommended — your own mailbox, no new accounts):
- *     SMTP_HOST, SMTP_PORT (465 or 587), SMTP_USER, SMTP_PASS
- *     e.g. the credentials of sales@interconverters.com at your email host.
+ * Transport: Resend (preferred — RESEND_API_KEY, domain interconverters.com
+ * verified in Resend) or SMTP (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS) as a
+ * fallback when no Resend key is set.
  *
- *   Resend (https://resend.com):
- *     RESEND_API_KEY (+ domain verification for good deliverability)
- *
- *   Shared:
- *     NOTIFY_TO   — recipient, default sales@interconverters.com
- *     NOTIFY_FROM — sender, default SMTP_USER (SMTP) / Resend sandbox (Resend)
+ * Env:
+ *   RESEND_API_KEY — Resend transport
+ *   SMTP_*         — SMTP transport (used only when RESEND_API_KEY is absent)
+ *   NOTIFY_CC      — internal copy recipient, default sales@interconverters.com
+ *   NOTIFY_FROM    — sender, default "Interconverters <sales@interconverters.com>"
  *
  * Request: { kind: 'rfq' | 'contact', data: Record<string, string> }
- * The customer's email (data.email) becomes the Reply-To so the team can
- * answer directly.
  *
- * Server-side only. This endpoint sends to a FIXED internal recipient, never
- * to an address chosen by the request, so it cannot be abused as an open
- * relay.
+ * Recipients are never chosen freely by the caller: the customer copy goes
+ * to the email they typed into the form (so it only ever goes to themselves)
+ * and the CC is the fixed internal inbox — no open-relay risk.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
 
-const DEFAULT_TO = 'sales@interconverters.com';
-const DEFAULT_FROM = 'Interconverters Website <onboarding@resend.dev>';
+const DEFAULT_CC = 'sales@interconverters.com';
+const DEFAULT_FROM = 'Interconverters <sales@interconverters.com>';
 const MAX_FIELD_LEN = 4000;
 const MAX_FIELDS = 30;
 
-const SUBJECTS: Record<string, string> = {
-  rfq: 'New sample/quotation request',
-  contact: 'New website inquiry',
+const COMPANY = {
+  name: 'INTERCONVERTERS (PRIVATE) LIMITED',
+  address: '24, Sector 12-B, North Karachi Industrial Area, Karachi, Sindh 75850, Pakistan',
+  phone: '+92-21-36958286',
+  email: 'sales@interconverters.com',
+  website: 'https://interconverters.com',
 };
+
+/** Fields shown to the customer, with friendly labels. */
+const FIELD_LABELS: Record<string, string> = {
+  designCode: 'Design ID',
+  requestType: 'Request type',
+  name: 'Name',
+  contactName: 'Name',
+  company: 'Company',
+  email: 'Email',
+  phone: 'Phone / WhatsApp',
+  country: 'Country',
+  application: 'Application',
+  quantity: 'Quantity',
+  annualRequirement: 'Annual requirement',
+  targetPrice: 'Target price',
+  targetDate: 'Target date',
+  subject: 'Subject',
+  message: 'Message',
+};
+/** Internal/duplicate keys never shown in the email body. */
+const HIDDEN_KEYS = new Set(['_hp', 'firstName', 'lastName', 'designUrl']);
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function label(key: string): string {
-  return key
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .replace(/^./, (c) => c.toUpperCase());
+function isEmail(v: unknown): v is string {
+  return typeof v === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -52,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
+  const resendKey = process.env.RESEND_API_KEY?.trim();
   const smtp = {
     host: process.env.SMTP_HOST?.trim(),
     port: Number(process.env.SMTP_PORT ?? 465),
@@ -59,11 +78,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     pass: process.env.SMTP_PASS,
   };
   const smtpConfigured = Boolean(smtp.host && smtp.user && smtp.pass);
-  const resendKey = process.env.RESEND_API_KEY?.trim();
-  if (!smtpConfigured && !resendKey) {
+  if (!resendKey && !smtpConfigured) {
     res.status(503).json({
       error: 'not_configured',
-      message: 'No email transport configured — set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS or RESEND_API_KEY.',
+      message: 'No email transport configured — set RESEND_API_KEY (or SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS).',
     });
     return;
   }
@@ -72,7 +90,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     kind?: string;
     data?: Record<string, unknown>;
   };
-
   const kind = body?.kind === 'rfq' ? 'rfq' : body?.kind === 'contact' ? 'contact' : null;
   const raw = body?.data;
   if (!kind || !raw || typeof raw !== 'object') {
@@ -87,77 +104,84 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   const entries = Object.entries(raw)
-    .filter(([k, v]) => k !== '_hp' && typeof v === 'string' && (v as string).trim() !== '')
+    .filter(([k, v]) => !HIDDEN_KEYS.has(k) && typeof v === 'string' && (v as string).trim() !== '')
     .slice(0, MAX_FIELDS)
-    .map(([k, v]) => [k, (v as string).slice(0, MAX_FIELD_LEN)] as const);
-
+    .map(([k, v]) => [k, (v as string).trim().slice(0, MAX_FIELD_LEN)] as const);
   if (entries.length === 0) {
     res.status(400).json({ error: 'bad_request', message: 'No form data.' });
     return;
   }
+  const data = Object.fromEntries(entries);
 
-  const dataMap = Object.fromEntries(entries);
-  const designCode = dataMap.designCode ? ` — ${dataMap.designCode}` : '';
-  const subject = `${SUBJECTS[kind]}${designCode} (interconverters.com)`;
-  const replyTo = typeof dataMap.email === 'string' && dataMap.email.includes('@') ? dataMap.email : undefined;
+  const customerEmail = isEmail(data.email) ? data.email.trim() : null;
+  const customerName = (data.contactName || data.name || '').toString().trim();
+  const designCode = data.designCode ? String(data.designCode) : '';
+  const designUrl = typeof raw.designUrl === 'string' ? raw.designUrl : '';
+
+  const subject =
+    kind === 'rfq'
+      ? `We received your ${data.requestType ? String(data.requestType).toLowerCase() : 'request'}${designCode ? ` — ${designCode}` : ''}`
+      : 'Thank you for contacting Interconverters';
+
+  const intro =
+    kind === 'rfq'
+      ? 'Thank you for your request. Our technical team will review your design and contact you shortly with feedback, a sample plan or a quotation.'
+      : 'Thank you for your message. A member of our team will get back to you shortly.';
 
   const rows = entries
     .map(
       ([k, v]) =>
-        `<tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;vertical-align:top;white-space:nowrap;">${esc(label(k))}</td>` +
+        `<tr><td style="padding:6px 14px 6px 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:.05em;vertical-align:top;white-space:nowrap;">${esc(FIELD_LABELS[k] ?? k)}</td>` +
         `<td style="padding:6px 0;color:#0f172a;font-size:14px;">${esc(v).replace(/\n/g, '<br/>')}</td></tr>`
     )
     .join('');
 
   const html =
-    `<div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;">` +
-    `<h2 style="color:#004A99;font-size:18px;">${esc(SUBJECTS[kind])}</h2>` +
+    `<div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;color:#0f172a;">` +
+    `<p style="font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:#004A99;font-weight:bold;margin:0 0 12px;">Interconverters · Narrow Fabric Design Studio</p>` +
+    `<p style="font-size:15px;">Dear ${esc(customerName || 'Customer')},</p>` +
+    `<p style="font-size:15px;line-height:1.5;">${intro}</p>` +
+    `<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:24px 0 8px;">Your submission</h3>` +
     `<table style="border-collapse:collapse;">${rows}</table>` +
-    `<p style="color:#94a3b8;font-size:11px;margin-top:24px;">Sent automatically from interconverters.com` +
-    (dataMap.designCode
-      ? ` · Design <b>${esc(dataMap.designCode)}</b> — view it in the technical dashboard at interconverters.com/admin`
+    (designUrl
+      ? `<p style="font-size:13px;margin-top:16px;">View your design: <a href="${esc(designUrl)}" style="color:#004A99;">${esc(designUrl)}</a></p>`
       : '') +
-    `</p></div>`;
+    `<p style="font-size:13px;color:#64748b;margin-top:24px;line-height:1.5;">Please reply to this email if you have any questions — it reaches our sales team directly.</p>` +
+    `<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;"/>` +
+    `<p style="font-size:12px;color:#64748b;line-height:1.6;margin:0;"><b style="color:#0f172a;">${COMPANY.name}</b><br/>${esc(COMPANY.address)}<br/>${COMPANY.phone} · <a href="mailto:${COMPANY.email}" style="color:#004A99;">${COMPANY.email}</a> · <a href="${COMPANY.website}" style="color:#004A99;">interconverters.com</a></p>` +
+    `</div>`;
 
-  const to = process.env.NOTIFY_TO?.trim() || DEFAULT_TO;
+  const cc = process.env.NOTIFY_CC?.trim() || DEFAULT_CC;
+  const from = process.env.NOTIFY_FROM?.trim() || DEFAULT_FROM;
+  // Customer gets the confirmation, sales is CC'd. If the customer email is
+  // unusable, the copy goes to sales only so nothing is lost.
+  const to = customerEmail ?? cc;
+  const ccList = customerEmail ? [cc] : [];
 
   try {
-    if (smtpConfigured) {
-      // Preferred: the factory's own mailbox via its email host's SMTP.
-      const transporter = nodemailer.createTransport({
-        host: smtp.host,
-        port: smtp.port,
-        secure: smtp.port === 465,
-        auth: { user: smtp.user, pass: smtp.pass },
+    if (resendKey) {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to: [to], ...(ccList.length ? { cc: ccList } : {}), reply_to: cc, subject, html }),
       });
-      await transporter.sendMail({
-        from: process.env.NOTIFY_FROM?.trim() || smtp.user,
-        to,
-        subject,
-        html,
-        ...(replyTo ? { replyTo } : {}),
-      });
+      if (!r.ok) {
+        const detail = await r.text();
+        console.error('[api/notify] Resend error:', r.status, detail.slice(0, 500));
+        res.status(502).json({ error: 'upstream_error', message: 'The email service rejected the message.' });
+        return;
+      }
       res.status(200).json({ ok: true });
       return;
     }
 
-    const resendRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: process.env.NOTIFY_FROM?.trim() || DEFAULT_FROM,
-        to: [to],
-        subject,
-        html,
-        ...(replyTo ? { reply_to: replyTo } : {}),
-      }),
+    const transporter = nodemailer.createTransport({
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.port === 465,
+      auth: { user: smtp.user, pass: smtp.pass },
     });
-    if (!resendRes.ok) {
-      const detail = await resendRes.text();
-      console.error('[api/notify] Resend error:', resendRes.status, detail.slice(0, 500));
-      res.status(502).json({ error: 'upstream_error', message: 'The email service rejected the message.' });
-      return;
-    }
+    await transporter.sendMail({ from, to, cc: ccList, replyTo: cc, subject, html });
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[api/notify] send failed:', err);
