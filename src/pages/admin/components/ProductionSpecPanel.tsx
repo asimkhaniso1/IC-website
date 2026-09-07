@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, Lock, Sparkles } from 'lucide-react';
-import type { Family, ProductionSpec, TechnicalDetails } from '../../../lib/types';
+import type { DesignSpec, Family, ProductionSpec, TechnicalDetails } from '../../../lib/types';
 import { useCapabilities } from '../../../lib/capabilities';
 import { isSupabaseConfigured } from '../../../lib/supabase';
 import { saveProductionSpec } from '../../../lib/api/admin';
+import { AiUnavailableError, generateProductionSpecDraft } from '../../../lib/ai';
 import { Badge, Button, Field, Modal, Panel, Select, TextArea, TextInput, Tooltip } from '../../../components/ui';
 
 /** Ordered field definitions shared by the read-only customer block, the editable form, and the Loom / CAD export. */
@@ -79,6 +80,7 @@ function CustomerTechnicalBlock({ technical }: { technical: TechnicalDetails }) 
 export function ProductionSpecPanel({
   projectId,
   family,
+  spec,
   customerTechnical,
   productionSpec,
   actorEmail,
@@ -86,6 +88,8 @@ export function ProductionSpecPanel({
 }: {
   projectId: string;
   family: Family;
+  /** Full customer design spec — required only for the AI-assisted draft, which grounds itself in it. */
+  spec?: DesignSpec;
   customerTechnical?: TechnicalDetails;
   productionSpec: ProductionSpec | null;
   actorEmail: string;
@@ -97,8 +101,12 @@ export function ProductionSpecPanel({
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiFilledCount, setAiFilledCount] = useState<number | null>(null);
 
-  const constructionOptions = useCapabilities()[family]?.constructions ?? [];
+  const capabilities = useCapabilities();
+  const constructionOptions = capabilities[family]?.constructions ?? [];
 
   useEffect(() => {
     const nextDetails = productionSpec?.details ?? emptyDetails();
@@ -117,6 +125,43 @@ export function ProductionSpecPanel({
       return { ...details, constructionType: constructionOther.trim() ? `Other — ${constructionOther.trim()}` : 'Other' };
     }
     return details;
+  }
+
+  /**
+   * AI-assisted DRAFT — fills only currently-empty fields (never overwrites
+   * something the technical team already entered), and the result is plain
+   * editable form state, not saved or approved until they choose to.
+   */
+  async function generateDraft() {
+    if (!spec) return;
+    setAiError(null);
+    setAiFilledCount(null);
+    setAiBusy(true);
+    try {
+      const { details: suggested } = await generateProductionSpecDraft(spec, capabilities[family], customerTechnical);
+      const constructionWasEmpty = !details.constructionType?.trim();
+      let filled = 0;
+      setDetails((d) => {
+        const next = { ...d };
+        for (const key of Object.keys(suggested) as (keyof TechnicalDetails)[]) {
+          const value = suggested[key];
+          if (!value || (next[key] ?? '').trim()) continue;
+          next[key] = value;
+          filled += 1;
+        }
+        return next;
+      });
+      if (suggested.constructionType && !constructionOptions.includes(suggested.constructionType) && constructionWasEmpty) {
+        setConstructionOther(suggested.constructionType);
+      }
+      setAiFilledCount(filled);
+    } catch (err) {
+      setAiError(
+        err instanceof AiUnavailableError || err instanceof Error ? err.message : 'Could not generate an AI draft.'
+      );
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   async function persist(status: 'draft' | 'approved') {
@@ -162,6 +207,26 @@ export function ProductionSpecPanel({
         {hasContent(customerTechnical) && <CustomerTechnicalBlock technical={customerTechnical!} />}
 
         {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+
+        {spec && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <Tooltip text="Drafts a starting point from the design and the capability library — grounded fields only, nothing invented. Fills only currently-empty fields; review and edit everything before saving.">
+              <Button variant="secondary" size="sm" onClick={() => void generateDraft()} disabled={aiBusy}>
+                {aiBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                AI Draft
+              </Button>
+            </Tooltip>
+            <span className="text-[11px] text-slate-500 leading-snug">
+              {aiError
+                ? <span className="font-medium text-red-600">{aiError}</span>
+                : aiFilledCount !== null
+                  ? aiFilledCount > 0
+                    ? <span className="font-medium text-green-600">Filled {aiFilledCount} empty field{aiFilledCount === 1 ? '' : 's'} — review before saving.</span>
+                    : 'Nothing to fill — every field already has a value.'
+                  : 'Suggests starting values from this design; every field stays editable and nothing is saved automatically.'}
+            </span>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Construction Type" htmlFor="ps-construction">
@@ -228,15 +293,6 @@ export function ProductionSpecPanel({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Tooltip text="Rule-based construction recommendation will suggest a construction from the capability library. Final approval always stays with the technical team.">
-              <span className="inline-flex items-center gap-1.5">
-                <Button variant="ghost" size="sm" disabled>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Recommend Construction
-                </Button>
-                <Badge tone="slate">Future Integration</Badge>
-              </span>
-            </Tooltip>
             <Button variant="secondary" size="sm" onClick={() => void persist('draft')} disabled={busy !== null}>
               {busy === 'draft' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Save Draft

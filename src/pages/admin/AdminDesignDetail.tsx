@@ -334,6 +334,7 @@ function DetailBody({ id }: { id: string }) {
           <ProductionSpecPanel
             projectId={project.id}
             family={project.family}
+            spec={project.spec}
             customerTechnical={project.spec?.technical}
             productionSpec={detail.productionSpec}
             actorEmail={actorEmail}

@@ -23,6 +23,7 @@ import { jacquardDesigner } from '../../studio/designers/jacquard';
 import { wovenDesigner } from '../../studio/designers/woven';
 import { knittedDesigner } from '../../studio/designers/knitted';
 import { LoomExportPanel } from './components/LoomExportPanel';
+import { ProductionSpecPanel } from './components/ProductionSpecPanel';
 import type { WeavabilityResult } from '../../lib/types';
 
 const MODES: { value: PreviewMode; label: string }[] = [
@@ -101,7 +102,7 @@ function EditorBody({ id }: { id: string }) {
       initialSpec={load.spec}
       designCode={load.designCode ?? ''}
       revisionNo={load.revisionNo ?? 1}
-      productionSpec={load.productionSpec ?? null}
+      initialProductionSpec={load.productionSpec ?? null}
       actorEmail={session?.user.email ?? 'staff'}
       onSaved={() => navigate(`/admin/designs/${id}`)}
     />
@@ -113,7 +114,7 @@ function EditorWorkspace({
   initialSpec,
   designCode,
   revisionNo,
-  productionSpec,
+  initialProductionSpec,
   actorEmail,
   onSaved,
 }: {
@@ -121,7 +122,7 @@ function EditorWorkspace({
   initialSpec: DesignSpec;
   designCode: string;
   revisionNo: number;
-  productionSpec: ProductionSpec | null;
+  initialProductionSpec: ProductionSpec | null;
   actorEmail: string;
   onSaved: () => void;
 }) {
@@ -133,6 +134,16 @@ function EditorWorkspace({
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [productionSpec, setProductionSpec] = useState<ProductionSpec | null>(initialProductionSpec);
+
+  async function refreshProductionSpec() {
+    try {
+      const detail = await getProjectDetail(id);
+      setProductionSpec(detail?.productionSpec ?? null);
+    } catch {
+      /* non-fatal — the panel keeps whatever it already has locally */
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setWeavability(checkWeavability(spec, capabilities[spec.family])), 400);
@@ -217,20 +228,31 @@ function EditorWorkspace({
           </div>
         }
         specification={
-          <SpecSummaryPanel
-            spec={spec}
-            onSpecChange={setSpec}
-            weavability={weavability}
-            extraPanel={
-              <LoomExportPanel
-                spec={spec}
-                productionSpec={productionSpec}
-                designCode={designCode}
-                revisionNo={revisionNo}
-                preparedBy={actorEmail}
-              />
-            }
-          />
+          <div className="flex flex-col gap-4">
+            <SpecSummaryPanel
+              spec={spec}
+              onSpecChange={setSpec}
+              weavability={weavability}
+              extraPanel={
+                <LoomExportPanel
+                  spec={spec}
+                  productionSpec={productionSpec}
+                  designCode={designCode}
+                  revisionNo={revisionNo}
+                  preparedBy={actorEmail}
+                />
+              }
+            />
+            <ProductionSpecPanel
+              projectId={id}
+              family={spec.family}
+              spec={spec}
+              customerTechnical={spec.technical}
+              productionSpec={productionSpec}
+              actorEmail={actorEmail}
+              onSaved={() => void refreshProductionSpec()}
+            />
+          </div>
         }
       />
 

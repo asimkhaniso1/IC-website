@@ -5,7 +5,16 @@
  */
 import { FAMILY_BY_CODE } from './constants';
 import { formatDim } from './units';
-import type { DesignSpec, Feasibility, JacquardSpec, KnittedSpec, WeavabilityIssue, WovenSpec } from './types';
+import type {
+  DesignSpec,
+  Feasibility,
+  JacquardSpec,
+  KnittedSpec,
+  TechnicalDetails,
+  WeavabilityIssue,
+  WovenSpec,
+} from './types';
+import type { FamilyCapabilities } from './capabilities';
 
 export type AiUnavailableReason = 'not_configured' | 'network' | 'error';
 
@@ -128,5 +137,23 @@ export async function analyzeDesignAi(
 ): Promise<{ level: Feasibility; issues: WeavabilityIssue[]; summary: string }> {
   return postJson<{ level: Feasibility; issues: WeavabilityIssue[]; summary: string }>('/api/ai/analyze', {
     spec,
+  });
+}
+
+/**
+ * AI-assisted DRAFT of the internal production specification — staff-only.
+ * Returns a partial set of fields to prefill into the (still fully editable)
+ * production spec form; nothing here is saved or approved automatically.
+ * Fields the model has no basis for are simply omitted, never guessed.
+ */
+export async function generateProductionSpecDraft(
+  spec: DesignSpec,
+  capabilities?: FamilyCapabilities,
+  customerTechnical?: TechnicalDetails
+): Promise<{ details: Partial<TechnicalDetails> }> {
+  return postJson<{ details: Partial<TechnicalDetails> }>('/api/ai/production-spec', {
+    spec,
+    capabilities,
+    customerTechnical,
   });
 }
