@@ -28,7 +28,6 @@ export function RepeatPanel({
             max={500}
             step={1}
             value={spec.repeat.lengthMm}
-            valueLabel={`${spec.repeat.lengthMm.toFixed(0)} mm`}
             onChange={(e) => setRepeat({ lengthMm: Number(e.target.value) })}
           />
         </Field>
@@ -46,7 +45,6 @@ export function RepeatPanel({
             max={200}
             step={1}
             value={spec.repeat.spacingMm}
-            valueLabel={`${spec.repeat.spacingMm.toFixed(0)} mm`}
             onChange={(e) => setRepeat({ spacingMm: Number(e.target.value) })}
           />
         </Field>

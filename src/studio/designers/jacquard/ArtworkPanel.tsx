@@ -326,7 +326,6 @@ export function ArtworkPanel({
                   max={ARTWORK_SIZE_MAX_MM}
                   step={0.5}
                   value={active.transform.widthMm}
-                  valueLabel={`${active.transform.widthMm.toFixed(1)} mm`}
                   onChange={(e) => {
                     const v = Number(e.target.value);
                     if (aspectLocked) {
@@ -359,7 +358,6 @@ export function ArtworkPanel({
                   max={ARTWORK_SIZE_MAX_MM}
                   step={0.5}
                   value={active.transform.heightMm}
-                  valueLabel={`${active.transform.heightMm.toFixed(1)} mm`}
                   onChange={(e) => {
                     const v = Number(e.target.value);
                     if (aspectLocked) {
@@ -400,7 +398,6 @@ export function ArtworkPanel({
                   max={offsetRangeX}
                   step={0.5}
                   value={active.transform.xMm}
-                  valueLabel={`${active.transform.xMm.toFixed(1)} mm`}
                   onChange={(e) => updateActiveTransform({ xMm: Number(e.target.value) })}
                 />
               </Field>
@@ -418,7 +415,6 @@ export function ArtworkPanel({
                   max={offsetRangeY}
                   step={0.5}
                   value={active.transform.yMm}
-                  valueLabel={`${active.transform.yMm.toFixed(1)} mm`}
                   onChange={(e) => updateActiveTransform({ yMm: Number(e.target.value) })}
                 />
               </Field>
