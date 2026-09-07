@@ -121,6 +121,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     '```json',
     JSON.stringify(specClone, null, 2),
     '```',
+    // The design only carries the elasticityClass label (e.g. "medium") — this
+    // is the company's own definition of what that label means numerically,
+    // so a target elongation % can be grounded in it rather than omitted.
+    'If the design is elastic, its elasticityClass maps to this company-defined target elongation range: ' +
+      'low = 10–50%, medium = 50–120%, high = 120–200%. If elasticityClass is "custom", use the design\'s own ' +
+      'customElongationPct value instead. Use this to inform elongationPct — state it as the class\'s range ' +
+      '(e.g. "50–120%") rather than inventing a single false-precise number.',
   ];
   if (body?.capabilities) {
     promptParts.push('Manufacturability capability library for this product family:', '```json', JSON.stringify(body.capabilities, null, 2), '```');
