@@ -75,6 +75,10 @@ export interface TechnicalDetails {
   rubberConfig?: string;
   elasticEnds?: string;
   picksDensity?: string;
+  /** Warp density, ends per cm — numeric string. Drives the Loom / CAD pattern export grid width. */
+  endsPerCm?: string;
+  /** Weft density, picks per cm — numeric string. Drives the Loom / CAD pattern export grid height. */
+  picksPerCm?: string;
   finishedWidthMm?: string;
   elongationPct?: string;
   recoveryPct?: string;

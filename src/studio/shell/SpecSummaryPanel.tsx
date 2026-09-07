@@ -73,10 +73,18 @@ export function SpecSummaryPanel({
   spec,
   onSpecChange,
   weavability,
+  extraPanel,
 }: {
   spec: DesignSpec;
   onSpecChange: (next: DesignSpec) => void;
   weavability: WeavabilityResult;
+  /**
+   * Replaces the "Production" panel below. Customer-facing callers omit this
+   * and keep the placeholder — the Loom / CAD export uses the internal,
+   * technical-team-approved production specification, so it is only ever
+   * wired up on the admin side (see AdminDesignEdit).
+   */
+  extraPanel?: ReactNode;
 }) {
   const familyMeta = FAMILY_BY_CODE[spec.family];
   const setUnit = (unit: Unit) => onSpecChange({ ...spec, unit });
@@ -194,12 +202,14 @@ export function SpecSummaryPanel({
         </div>
       </Panel>
 
-      <Panel title="Production">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-400">Production CAD / Loom Export</span>
-          <Badge tone="slate">Future Integration</Badge>
-        </div>
-      </Panel>
+      {extraPanel ?? (
+        <Panel title="Production">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-400">Production CAD / Loom Export</span>
+            <Badge tone="slate">Future Integration</Badge>
+          </div>
+        </Panel>
+      )}
 
       <p className="px-1 text-[11px] leading-relaxed text-slate-400" title={GLOSSARY.advancedTechnical}>
         {TECHNICAL_REVIEW_DISCLAIMER}

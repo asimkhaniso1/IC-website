@@ -535,6 +535,8 @@ const TECHNICAL_LABELS: Record<keyof TechnicalDetails, string> = {
   rubberConfig: 'Rubber Configuration',
   elasticEnds: 'Elastic Ends',
   picksDensity: 'Picks / Density',
+  endsPerCm: 'Ends / cm (warp density)',
+  picksPerCm: 'Picks / cm (weft density)',
   finishedWidthMm: 'Finished Width (mm)',
   elongationPct: 'Target Elongation (%)',
   recoveryPct: 'Recovery (%)',

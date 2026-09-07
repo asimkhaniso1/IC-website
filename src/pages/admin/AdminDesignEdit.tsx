@@ -12,7 +12,7 @@ import { useSession } from '../../auth/useSession';
 import { createAdminRevision, getProjectDetail } from '../../lib/api/admin';
 import { revisionLabel } from '../../lib/ids';
 import { useCapabilities } from '../../lib/capabilities';
-import type { DesignSpec, JacquardSpec, KnittedSpec, PreviewMode, WovenSpec } from '../../lib/types';
+import type { DesignSpec, JacquardSpec, KnittedSpec, PreviewMode, ProductionSpec, WovenSpec } from '../../lib/types';
 import { Badge, Button, Modal, TextArea } from '../../components/ui';
 import FabricPreview from '../../studio/preview/index';
 import { StudioLayout } from '../../studio/shell/StudioLayout';
@@ -22,6 +22,7 @@ import { checkWeavability } from '../../studio/weavability/rules';
 import { jacquardDesigner } from '../../studio/designers/jacquard';
 import { wovenDesigner } from '../../studio/designers/woven';
 import { knittedDesigner } from '../../studio/designers/knitted';
+import { LoomExportPanel } from './components/LoomExportPanel';
 import type { WeavabilityResult } from '../../lib/types';
 
 const MODES: { value: PreviewMode; label: string }[] = [
@@ -46,6 +47,7 @@ function EditorBody({ id }: { id: string }) {
     spec?: DesignSpec;
     designCode?: string;
     revisionNo?: number;
+    productionSpec?: ProductionSpec | null;
   }>({ status: 'loading' });
 
   useEffect(() => {
@@ -63,6 +65,7 @@ function EditorBody({ id }: { id: string }) {
           spec,
           designCode: detail.project.designCode,
           revisionNo: detail.project.revisionNo,
+          productionSpec: detail.productionSpec,
         });
       })
       .catch((e: unknown) => {
@@ -98,6 +101,7 @@ function EditorBody({ id }: { id: string }) {
       initialSpec={load.spec}
       designCode={load.designCode ?? ''}
       revisionNo={load.revisionNo ?? 1}
+      productionSpec={load.productionSpec ?? null}
       actorEmail={session?.user.email ?? 'staff'}
       onSaved={() => navigate(`/admin/designs/${id}`)}
     />
@@ -109,6 +113,7 @@ function EditorWorkspace({
   initialSpec,
   designCode,
   revisionNo,
+  productionSpec,
   actorEmail,
   onSaved,
 }: {
@@ -116,6 +121,7 @@ function EditorWorkspace({
   initialSpec: DesignSpec;
   designCode: string;
   revisionNo: number;
+  productionSpec: ProductionSpec | null;
   actorEmail: string;
   onSaved: () => void;
 }) {
@@ -210,7 +216,22 @@ function EditorWorkspace({
             </div>
           </div>
         }
-        specification={<SpecSummaryPanel spec={spec} onSpecChange={setSpec} weavability={weavability} />}
+        specification={
+          <SpecSummaryPanel
+            spec={spec}
+            onSpecChange={setSpec}
+            weavability={weavability}
+            extraPanel={
+              <LoomExportPanel
+                spec={spec}
+                productionSpec={productionSpec}
+                designCode={designCode}
+                revisionNo={revisionNo}
+                preparedBy={actorEmail}
+              />
+            }
+          />
+        }
       />
 
       <Modal open={saveOpen} onClose={() => setSaveOpen(false)} title={`Save as revision ${revisionLabel(revisionNo + 1)}`}>

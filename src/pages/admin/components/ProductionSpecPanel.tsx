@@ -6,8 +6,8 @@ import { isSupabaseConfigured } from '../../../lib/supabase';
 import { saveProductionSpec } from '../../../lib/api/admin';
 import { Badge, Button, Field, Modal, Panel, Select, TextArea, TextInput, Tooltip } from '../../../components/ui';
 
-/** Ordered field definitions shared by the read-only customer block and the editable form. */
-const TECHNICAL_FIELD_DEFS: { key: keyof TechnicalDetails; label: string }[] = [
+/** Ordered field definitions shared by the read-only customer block, the editable form, and the Loom / CAD export. */
+export const TECHNICAL_FIELD_DEFS: { key: keyof TechnicalDetails; label: string }[] = [
   { key: 'constructionType', label: 'Construction Type' },
   { key: 'yarnType', label: 'Yarn Type' },
   { key: 'yarnCount', label: 'Yarn Count' },
@@ -16,7 +16,9 @@ const TECHNICAL_FIELD_DEFS: { key: keyof TechnicalDetails; label: string }[] = [
   { key: 'rubberType', label: 'Rubber Type' },
   { key: 'rubberConfig', label: 'Rubber Configuration' },
   { key: 'elasticEnds', label: 'Elastic Ends' },
-  { key: 'picksDensity', label: 'Picks / Density' },
+  { key: 'picksDensity', label: 'Picks / Density (notes)' },
+  { key: 'endsPerCm', label: 'Ends / cm (warp density)' },
+  { key: 'picksPerCm', label: 'Picks / cm (weft density)' },
   { key: 'finishedWidthMm', label: 'Finished Width (mm)' },
   { key: 'elongationPct', label: 'Target Elongation (%)' },
   { key: 'recoveryPct', label: 'Recovery (%)' },

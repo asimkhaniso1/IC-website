@@ -14,6 +14,9 @@ import { ACCEPTED_ARTWORK_MIME, MAX_UPLOAD_BYTES, TEXT_FONTS } from '../../../li
 import type { ArtworkItem, JacquardSpec } from '../../../lib/types';
 import { GLOSSARY } from '../../glossary';
 
+/** Generous upper bound for artwork width/height sliders, in mm. */
+const ARTWORK_SIZE_MAX_MM = 320;
+
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -102,6 +105,11 @@ export function ArtworkPanel({
   const [error, setError] = useState<string | null>(null);
 
   const active = spec.artwork.find((a) => a.id === activeId) ?? null;
+  // Offset sliders range across one repeat cycle horizontally, and across the
+  // fabric width vertically, so the artwork can be dragged anywhere it could
+  // meaningfully sit.
+  const offsetRangeX = Math.max(20, spec.repeat.lengthMm / 2 + spec.repeat.spacingMm);
+  const offsetRangeY = Math.max(20, spec.widthMm / 2);
 
   const updateItems = (items: ArtworkItem[]) => onChange({ ...spec, artwork: items });
 
@@ -292,8 +300,26 @@ export function ArtworkPanel({
                 <NumberField
                   value={Number(active.transform.widthMm.toFixed(1))}
                   suffix="mm"
+                  min={2}
+                  max={ARTWORK_SIZE_MAX_MM}
                   step={0.5}
                   onValue={(v) => {
+                    if (active.kind === 'image' && lockAspect[active.id]) {
+                      const ratio = active.transform.heightMm / active.transform.widthMm;
+                      updateActiveTransform({ widthMm: v, heightMm: v * ratio });
+                    } else {
+                      updateActiveTransform({ widthMm: v });
+                    }
+                  }}
+                />
+                <Slider
+                  min={2}
+                  max={ARTWORK_SIZE_MAX_MM}
+                  step={0.5}
+                  value={active.transform.widthMm}
+                  valueLabel={`${active.transform.widthMm.toFixed(1)} mm`}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
                     if (active.kind === 'image' && lockAspect[active.id]) {
                       const ratio = active.transform.heightMm / active.transform.widthMm;
                       updateActiveTransform({ widthMm: v, heightMm: v * ratio });
@@ -307,8 +333,26 @@ export function ArtworkPanel({
                 <NumberField
                   value={Number(active.transform.heightMm.toFixed(1))}
                   suffix="mm"
+                  min={2}
+                  max={ARTWORK_SIZE_MAX_MM}
                   step={0.5}
                   onValue={(v) => {
+                    if (active.kind === 'image' && lockAspect[active.id]) {
+                      const ratio = active.transform.widthMm / active.transform.heightMm;
+                      updateActiveTransform({ heightMm: v, widthMm: v * ratio });
+                    } else {
+                      updateActiveTransform({ heightMm: v });
+                    }
+                  }}
+                />
+                <Slider
+                  min={2}
+                  max={ARTWORK_SIZE_MAX_MM}
+                  step={0.5}
+                  value={active.transform.heightMm}
+                  valueLabel={`${active.transform.heightMm.toFixed(1)} mm`}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
                     if (active.kind === 'image' && lockAspect[active.id]) {
                       const ratio = active.transform.widthMm / active.transform.heightMm;
                       updateActiveTransform({ heightMm: v, widthMm: v * ratio });
@@ -337,16 +381,36 @@ export function ArtworkPanel({
                 <NumberField
                   value={Number(active.transform.xMm.toFixed(1))}
                   suffix="mm"
+                  min={-offsetRangeX}
+                  max={offsetRangeX}
                   step={0.5}
                   onValue={(v) => updateActiveTransform({ xMm: v })}
+                />
+                <Slider
+                  min={-offsetRangeX}
+                  max={offsetRangeX}
+                  step={0.5}
+                  value={active.transform.xMm}
+                  valueLabel={`${active.transform.xMm.toFixed(1)} mm`}
+                  onChange={(e) => updateActiveTransform({ xMm: Number(e.target.value) })}
                 />
               </Field>
               <Field label="Y offset">
                 <NumberField
                   value={Number(active.transform.yMm.toFixed(1))}
                   suffix="mm"
+                  min={-offsetRangeY}
+                  max={offsetRangeY}
                   step={0.5}
                   onValue={(v) => updateActiveTransform({ yMm: v })}
+                />
+                <Slider
+                  min={-offsetRangeY}
+                  max={offsetRangeY}
+                  step={0.5}
+                  value={active.transform.yMm}
+                  valueLabel={`${active.transform.yMm.toFixed(1)} mm`}
+                  onChange={(e) => updateActiveTransform({ yMm: Number(e.target.value) })}
                 />
               </Field>
             </div>

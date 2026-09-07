@@ -148,6 +148,12 @@ function ArtworkItemNode({
             fontWeight={item.fontWeight ?? 700}
             fontSize={h * 0.82}
             fill={item.color}
+            // Text has no intrinsic width limit, unlike an <image>'s width/height
+            // box — without this, long or bold text renders wider than its
+            // declared box and overlaps the next repeat cell. textLength pins the
+            // rendered text to exactly the artwork's declared width.
+            textLength={item.text ? w : undefined}
+            lengthAdjust="spacingAndGlyphs"
           >
             {item.text}
           </text>
