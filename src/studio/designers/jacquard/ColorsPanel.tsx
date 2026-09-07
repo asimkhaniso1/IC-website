@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { Badge, Button } from '../../../components/ui/index';
+import { Badge, Button, Panel } from '../../../components/ui/index';
 import { useCapabilities } from '../../../lib/capabilities';
 import type { JacquardSpec } from '../../../lib/types';
 import { ColorField } from './ColorField';
@@ -25,14 +25,17 @@ export function ColorsPanel({
   const atLimit = used >= maxColors;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Colors</h3>
+    <Panel
+      title="Colors"
+      action={
         <Badge tone={atLimit ? 'amber' : 'slate'}>
           {used}/{maxColors} used
         </Badge>
-      </header>
-      <div className="p-4 flex flex-col gap-4">
+      }
+      collapsible
+      defaultOpen
+    >
+      <div className="flex flex-col gap-4">
         <ColorField label="Base color" value={spec.baseColor} onChange={(hex) => onChange({ ...spec, baseColor: hex })} />
         <ColorField label="Motif / foreground color" value={spec.fg} onChange={(hex) => onChange({ ...spec, fg: hex })} />
 
@@ -139,6 +142,6 @@ export function ColorsPanel({
           )}
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

@@ -45,6 +45,8 @@ export function ColorwaysPanel({
           Colorways <Tooltip text={GLOSSARY.colorway} />
         </span>
       }
+      collapsible
+      defaultOpen={false}
     >
       <div className="grid grid-cols-3 gap-2">
         {SLOTS.map((label) => {

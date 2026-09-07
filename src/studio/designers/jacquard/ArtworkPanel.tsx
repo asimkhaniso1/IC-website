@@ -105,6 +105,10 @@ export function ArtworkPanel({
   const [error, setError] = useState<string | null>(null);
 
   const active = spec.artwork.find((a) => a.id === activeId) ?? null;
+  // Images default to aspect-locked — including ones from a saved design
+  // reopened for editing, not just freshly uploaded ones — until the user
+  // explicitly unchecks it.
+  const aspectLocked = active?.kind === 'image' ? (lockAspect[active.id] ?? true) : false;
   // Offset sliders range across one repeat cycle horizontally, and across the
   // fabric width vertically, so the artwork can be dragged anywhere it could
   // meaningfully sit.
@@ -196,7 +200,12 @@ export function ArtworkPanel({
   };
 
   return (
-    <Panel title="Artwork" action={<Badge tone="slate">{spec.artwork.length} item{spec.artwork.length === 1 ? '' : 's'}</Badge>}>
+    <Panel
+      title="Artwork"
+      action={<Badge tone="slate">{spec.artwork.length} item{spec.artwork.length === 1 ? '' : 's'}</Badge>}
+      collapsible
+      defaultOpen
+    >
       <div className="flex flex-col gap-4">
         <p className="text-xs text-slate-500 leading-relaxed">{GLOSSARY.jacquardArtwork}</p>
 
@@ -304,7 +313,7 @@ export function ArtworkPanel({
                   max={ARTWORK_SIZE_MAX_MM}
                   step={0.5}
                   onValue={(v) => {
-                    if (active.kind === 'image' && lockAspect[active.id]) {
+                    if (aspectLocked) {
                       const ratio = active.transform.heightMm / active.transform.widthMm;
                       updateActiveTransform({ widthMm: v, heightMm: v * ratio });
                     } else {
@@ -320,7 +329,7 @@ export function ArtworkPanel({
                   valueLabel={`${active.transform.widthMm.toFixed(1)} mm`}
                   onChange={(e) => {
                     const v = Number(e.target.value);
-                    if (active.kind === 'image' && lockAspect[active.id]) {
+                    if (aspectLocked) {
                       const ratio = active.transform.heightMm / active.transform.widthMm;
                       updateActiveTransform({ widthMm: v, heightMm: v * ratio });
                     } else {
@@ -337,7 +346,7 @@ export function ArtworkPanel({
                   max={ARTWORK_SIZE_MAX_MM}
                   step={0.5}
                   onValue={(v) => {
-                    if (active.kind === 'image' && lockAspect[active.id]) {
+                    if (aspectLocked) {
                       const ratio = active.transform.widthMm / active.transform.heightMm;
                       updateActiveTransform({ heightMm: v, widthMm: v * ratio });
                     } else {
@@ -353,7 +362,7 @@ export function ArtworkPanel({
                   valueLabel={`${active.transform.heightMm.toFixed(1)} mm`}
                   onChange={(e) => {
                     const v = Number(e.target.value);
-                    if (active.kind === 'image' && lockAspect[active.id]) {
+                    if (aspectLocked) {
                       const ratio = active.transform.widthMm / active.transform.heightMm;
                       updateActiveTransform({ heightMm: v, widthMm: v * ratio });
                     } else {
@@ -368,7 +377,7 @@ export function ArtworkPanel({
               <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
                 <input
                   type="checkbox"
-                  checked={lockAspect[active.id] ?? false}
+                  checked={aspectLocked}
                   onChange={(e) => setLockAspect((m) => ({ ...m, [active.id]: e.target.checked }))}
                   className="accent-brand-600"
                 />

@@ -22,7 +22,7 @@ export function FabricPanel({
   onChange: (next: JacquardSpec) => void;
 }) {
   return (
-    <Panel title="Fabric">
+    <Panel title="Fabric" collapsible defaultOpen>
       <div className="flex flex-col gap-4">
         <WidthField spec={spec} onChange={onChange} minMm={CAP.minWidthMm} maxMm={CAP.maxWidthMm} />
         <RollLengthField spec={spec} onChange={onChange} />

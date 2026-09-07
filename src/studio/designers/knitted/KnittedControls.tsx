@@ -80,7 +80,7 @@ export function KnittedControls({ spec, onChange, disabled }: DesignerControlsPr
 
   return (
     <div className="flex flex-col gap-4">
-      <Panel title="Style">
+      <Panel title="Style" collapsible defaultOpen>
         <div className="grid grid-cols-2 gap-2">
           {KNITTED_STYLES.map((s) => (
             <StyleCard
@@ -100,7 +100,7 @@ export function KnittedControls({ spec, onChange, disabled }: DesignerControlsPr
         </p>
       </Panel>
 
-      <Panel title="Fabric">
+      <Panel title="Fabric" collapsible defaultOpen>
         <div className="flex flex-col gap-3">
           <WidthField spec={spec} onChange={onChange} minMm={caps.minWidthMm} maxMm={caps.maxWidthMm} />
           <RollLengthField spec={spec} onChange={onChange} />
@@ -170,7 +170,7 @@ export function KnittedControls({ spec, onChange, disabled }: DesignerControlsPr
         </div>
       </Panel>
 
-      <Panel title="Color">
+      <Panel title="Color" collapsible defaultOpen>
         <div className="grid grid-cols-3 gap-3">
           <ColorPickerField
             label="Base color"
@@ -193,7 +193,7 @@ export function KnittedControls({ spec, onChange, disabled }: DesignerControlsPr
       </Panel>
 
       {style === 'ribbed' && (
-        <Panel title="Rib Appearance">
+        <Panel title="Rib Appearance" collapsible defaultOpen>
           <div className="grid grid-cols-3 gap-2">
             {RIB_APPEARANCES.map((r) => (
               <Button

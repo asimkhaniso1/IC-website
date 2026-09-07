@@ -13,7 +13,7 @@ export function RepeatPanel({
     onChange({ ...spec, repeat: { ...spec.repeat, ...patch } });
 
   return (
-    <Panel title="Repeat">
+    <Panel title="Repeat" collapsible defaultOpen={false}>
       <div className="flex flex-col gap-4">
         <Field label="Repeat length" tooltip={GLOSSARY.repeatLength}>
           <NumberField

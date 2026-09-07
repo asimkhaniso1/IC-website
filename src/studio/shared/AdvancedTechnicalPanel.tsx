@@ -1,6 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Badge, Field, Select, TextArea, TextInput } from '../../components/ui/index';
+import type { ReactNode } from 'react';
+import { Badge, Field, Panel, Select, TextArea, TextInput } from '../../components/ui/index';
 import { useCapabilities } from '../../lib/capabilities';
 import type { DesignSpec, TechnicalDetails } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
@@ -101,7 +100,6 @@ export function AdvancedTechnicalPanel<S extends DesignSpec>({
   spec: S;
   onChange: (next: S) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const filled = countFilled(spec.technical);
 
   const grid: ReactNode = (
@@ -134,41 +132,28 @@ export function AdvancedTechnicalPanel<S extends DesignSpec>({
   );
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`flex w-full items-center justify-between px-4 py-3 text-left ${
-          open ? 'border-b border-slate-100' : ''
-        }`}
-      >
-        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
-          Advanced / Technical
-          {filled > 0 && <Badge tone="slate">{filled} filled</Badge>}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-
-      {open && (
-        <div className="flex flex-col gap-4 p-4">
-          <p className="text-xs leading-relaxed text-slate-500" title={GLOSSARY.advancedTechnical}>
-            Optional — for customers who know their technical requirements. Our technical team
-            determines the final manufacturing construction.
-          </p>
-          {grid}
-          <Field label="Technical Notes">
-            <TextArea
-              value={spec.technical?.notes ?? ''}
-              onChange={(e) => setTech(spec, onChange, 'notes', e.target.value)}
-              rows={3}
-              placeholder="Anything else our technical team should know…"
-              className="text-sm"
-            />
-          </Field>
-        </div>
-      )}
-    </section>
+    <Panel
+      title="Advanced / Technical"
+      action={filled > 0 ? <Badge tone="slate">{filled} filled</Badge> : undefined}
+      collapsible
+      defaultOpen={false}
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-xs leading-relaxed text-slate-500" title={GLOSSARY.advancedTechnical}>
+          Optional — for customers who know their technical requirements. Our technical team
+          determines the final manufacturing construction.
+        </p>
+        {grid}
+        <Field label="Technical Notes">
+          <TextArea
+            value={spec.technical?.notes ?? ''}
+            onChange={(e) => setTech(spec, onChange, 'notes', e.target.value)}
+            rows={3}
+            placeholder="Anything else our technical team should know…"
+            className="text-sm"
+          />
+        </Field>
+      </div>
+    </Panel>
   );
 }

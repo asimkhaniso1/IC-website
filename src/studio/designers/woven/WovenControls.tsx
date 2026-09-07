@@ -114,7 +114,7 @@ export function WovenControls({ spec, onChange, disabled }: DesignerControlsProp
 
   return (
     <div className="flex flex-col gap-4">
-      <Panel title="Style">
+      <Panel title="Style" collapsible defaultOpen>
         <div className="grid grid-cols-3 gap-2">
           {WOVEN_STYLES.map((s) => (
             <StyleCard
@@ -136,7 +136,7 @@ export function WovenControls({ spec, onChange, disabled }: DesignerControlsProp
         </p>
       </Panel>
 
-      <Panel title="Fabric">
+      <Panel title="Fabric" collapsible defaultOpen>
         <div className="flex flex-col gap-3">
           <WidthField spec={spec} onChange={onChange} minMm={caps.minWidthMm} maxMm={caps.maxWidthMm} />
           <RollLengthField spec={spec} onChange={onChange} />
@@ -226,7 +226,7 @@ export function WovenControls({ spec, onChange, disabled }: DesignerControlsProp
         )}
       </Panel>
 
-      <Panel title="Colors">
+      <Panel title="Colors" collapsible defaultOpen>
         <div className="grid grid-cols-3 gap-3">
           <ColorPickerField
             label="Base color"
@@ -249,13 +249,13 @@ export function WovenControls({ spec, onChange, disabled }: DesignerControlsProp
       </Panel>
 
       {style === 'striped' && (
-        <Panel title="Stripes">
+        <Panel title="Stripes" collapsible defaultOpen>
           <StripeEditor spec={spec} onChange={onChange} disabled={disabled} />
         </Panel>
       )}
 
       {style === 'ribbed' && (
-        <Panel title="Rib Appearance">
+        <Panel title="Rib Appearance" collapsible defaultOpen>
           <div className="grid grid-cols-3 gap-2">
             {RIB_APPEARANCES.map((r) => (
               <Button

@@ -12,7 +12,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
-import { X, HelpCircle } from 'lucide-react';
+import { ChevronDown, X, HelpCircle } from 'lucide-react';
 import { isLight } from '../../lib/color';
 
 // ---------------------------------------------------------------------------
@@ -66,25 +66,52 @@ export function Panel({
   action,
   children,
   className = '',
+  collapsible = false,
+  defaultOpen = true,
 }: {
   title?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Renders the header as a toggle (accordion) that shows/hides the body. Used in the studio sidebar to keep it scannable. */
+  collapsible?: boolean;
+  /** Initial open state when `collapsible` is set. Ignored otherwise — the body always renders. */
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const showBody = !collapsible || open;
+
   return (
     <section
       className={`bg-white border border-slate-200 rounded-xl shadow-sm ${className}`}
     >
-      {title !== undefined && (
-        <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">
-            {title}
-          </h3>
-          {action}
-        </header>
-      )}
-      <div className="p-4">{children}</div>
+      {title !== undefined &&
+        (collapsible ? (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left ${
+              showBody ? 'border-b border-slate-100' : ''
+            }`}
+          >
+            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+              {title}
+              {action}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+            />
+          </button>
+        ) : (
+          <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+              {title}
+            </h3>
+            {action}
+          </header>
+        ))}
+      {showBody && <div className="p-4">{children}</div>}
     </section>
   );
 }
