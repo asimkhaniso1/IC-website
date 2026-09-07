@@ -38,10 +38,19 @@ function csvSection(title: string): string {
   return `\n${csvEscape(title)}\n`;
 }
 
+/**
+ * Parses a density field that may be a plain number ("42") or a range the AI
+ * draft proposes as a typical default ("30-50 ends/cm (typical)") — takes
+ * the midpoint of every number found in the string. Returns null only when
+ * no usable number is present at all.
+ */
 function parsePositive(s: string | undefined): number | null {
   if (!s) return null;
-  const n = Number(s.trim());
-  return Number.isFinite(n) && n > 0 ? n : null;
+  const matches = s.match(/\d+(?:\.\d+)?/g);
+  if (!matches || matches.length === 0) return null;
+  const nums = matches.map(Number).filter((n) => Number.isFinite(n) && n > 0);
+  if (nums.length === 0) return null;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
 function yesNo(b: boolean): string {
@@ -288,7 +297,15 @@ export interface BuildLoomExportOptions {
   meta: { designCode: string; revisionNo: number; preparedBy: string };
 }
 
-export async function buildLoomExportZip(opts: BuildLoomExportOptions): Promise<{ blob: Blob; filename: string }> {
+export interface PatternGridStatus {
+  included: boolean;
+  /** Set only when included is false. */
+  reason?: 'not-jacquard' | 'no-artwork' | 'no-density';
+}
+
+export async function buildLoomExportZip(
+  opts: BuildLoomExportOptions
+): Promise<{ blob: Blob; filename: string; patternGrid: PatternGridStatus }> {
   const { spec, productionSpec, meta } = opts;
   if (!productionSpec || !productionSpec.details.constructionType?.trim()) {
     throw new LoomExportError(
@@ -299,20 +316,28 @@ export async function buildLoomExportZip(opts: BuildLoomExportOptions): Promise<
   const zip = new JSZip();
   zip.file('loom-data.csv', buildLoomDataCsv(spec, productionSpec, meta));
 
+  let patternGrid: PatternGridStatus = { included: false, reason: 'not-jacquard' };
   if (spec.family === 'J') {
     const j = spec as JacquardSpec;
-    const endsPerCm = parsePositive(productionSpec.details.endsPerCm);
-    const picksPerCm = parsePositive(productionSpec.details.picksPerCm);
-    if (j.artwork.length > 0 && endsPerCm && picksPerCm) {
-      const { dataGridPng, previewPng } = await buildPatternGridPngs(j, endsPerCm, picksPerCm);
-      zip.file('pattern-grid.png', dataUrlToBase64(dataGridPng), { base64: true });
-      zip.file('pattern-grid-preview.png', dataUrlToBase64(previewPng), { base64: true });
+    if (j.artwork.length === 0) {
+      patternGrid = { included: false, reason: 'no-artwork' };
+    } else {
+      const endsPerCm = parsePositive(productionSpec.details.endsPerCm);
+      const picksPerCm = parsePositive(productionSpec.details.picksPerCm);
+      if (endsPerCm && picksPerCm) {
+        const { dataGridPng, previewPng } = await buildPatternGridPngs(j, endsPerCm, picksPerCm);
+        zip.file('pattern-grid.png', dataUrlToBase64(dataGridPng), { base64: true });
+        zip.file('pattern-grid-preview.png', dataUrlToBase64(previewPng), { base64: true });
+        patternGrid = { included: true };
+      } else {
+        patternGrid = { included: false, reason: 'no-density' };
+      }
     }
   }
 
   const blob = await zip.generateAsync({ type: 'blob' });
   const filename = `${meta.designCode}-${revisionLabel(meta.revisionNo)}_loom-cad-export.zip`;
-  return { blob, filename };
+  return { blob, filename, patternGrid };
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

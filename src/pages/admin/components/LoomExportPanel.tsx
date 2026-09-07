@@ -7,8 +7,22 @@
 import { useState } from 'react';
 import { CheckCircle2, Download, Loader2, Lock } from 'lucide-react';
 import { Badge, Button, Panel, Tooltip } from '../../../components/ui';
-import { buildLoomExportZip, downloadBlob, LoomExportError } from '../../../lib/loomExport';
+import { buildLoomExportZip, downloadBlob, LoomExportError, type PatternGridStatus } from '../../../lib/loomExport';
 import type { DesignSpec, ProductionSpec } from '../../../lib/types';
+
+function patternGridMessage(status: PatternGridStatus): string {
+  if (status.included) return 'pattern grid included.';
+  switch (status.reason) {
+    case 'not-jacquard':
+      return 'no pattern grid — only Jacquard designs carry a woven repeat to grid.';
+    case 'no-artwork':
+      return 'no pattern grid — this design has no artwork to rasterize yet.';
+    case 'no-density':
+      return 'no pattern grid — set Ends/cm and Picks/cm below (a single number or a range) to generate one.';
+    default:
+      return 'no pattern grid.';
+  }
+}
 
 export function LoomExportPanel({
   spec,
@@ -25,23 +39,22 @@ export function LoomExportPanel({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<PatternGridStatus | null>(null);
 
   const ready = Boolean(productionSpec?.details.constructionType?.trim());
 
   async function handleExport() {
     setError(null);
     setBusy(true);
-    setDone(false);
+    setDone(null);
     try {
-      const { blob, filename } = await buildLoomExportZip({
+      const { blob, filename, patternGrid } = await buildLoomExportZip({
         spec,
         productionSpec,
         meta: { designCode, revisionNo, preparedBy },
       });
       downloadBlob(blob, filename);
-      setDone(true);
-      window.setTimeout(() => setDone(false), 2500);
+      setDone(patternGrid);
     } catch (err) {
       setError(err instanceof LoomExportError || err instanceof Error ? err.message : 'Could not generate the export.');
     } finally {
@@ -79,12 +92,13 @@ export function LoomExportPanel({
               Export Loom / CAD Package
             </Button>
           </Tooltip>
-          {done && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-green-600">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Downloaded
-            </span>
-          )}
         </div>
+        {done && (
+          <p className={`text-xs font-medium ${done.included ? 'text-green-600' : 'text-amber-600'}`}>
+            <CheckCircle2 className="mr-1 inline w-3.5 h-3.5" />
+            Downloaded — {patternGridMessage(done)}
+          </p>
+        )}
         <span>
           <Badge tone="slate">Loom-agnostic reference data</Badge>
         </span>
