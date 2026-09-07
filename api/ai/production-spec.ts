@@ -2,15 +2,21 @@
  * POST /api/ai/production-spec
  *
  * AI-assisted DRAFT of the internal production specification — gives the
- * technical team a starting point to edit, not a finished or approved spec.
- * Every field returned here lands in editable form fields in
- * ProductionSpecPanel; nothing is saved or approved automatically, and this
- * is never shown to the customer (see src/lib/types.ts ProductionSpec).
+ * technical team a full starting point to correct, not a mostly-empty form
+ * and not a finished or approved spec. Every field returned here lands in
+ * editable form fields in ProductionSpecPanel; nothing is saved or approved
+ * automatically, and this is never shown to the customer (see
+ * src/lib/types.ts ProductionSpec).
  *
- * The model is explicitly instructed to leave a field out rather than invent
- * a specific-looking number (yarn denier, picks/cm, a machine reference, a
- * cost) it has no basis for — grounded only in the design spec, the
- * factory's own capability library, and ordinary construction convention.
+ * Two kinds of values come back, and the model is instructed to keep them
+ * distinguishable: (1) values actually grounded in this design's own data
+ * (its width, elasticity class, application, capability library) — stated
+ * plainly; (2) ordinary narrow-fabric construction convention for fields the
+ * design doesn't specify — stated as a typical range and suffixed
+ * " (typical)" so the technical team knows at a glance it's a default to
+ * verify, not something derived from this specific order. The one thing it
+ * must never guess is anything genuinely specific to this factory's own
+ * equipment (a named machine/loom reference) or a cost/price.
  *
  * Server-side only — process.env.GEMINI_API_KEY never reaches the client.
  *
@@ -70,19 +76,39 @@ const SYSTEM_INSTRUCTION = [
     'self-service design request.',
   'This draft is never shown to the customer, is never saved automatically, and is never treated as approved — ' +
     'a human engineer reviews and edits every field in a form before saving it, and separately decides whether ' +
-    'to approve it.',
+    'to approve it. Your job is to give them a FULL draft to correct, not a mostly-empty form — leave a field ' +
+    'blank only when even a typical default would be actively misleading.',
   'You are given the customer design specification as JSON, the factory\'s manufacturability capability library ' +
-    'for this product family (allowed construction types and width/elongation ranges), and optionally technical ' +
-    'details the customer already entered.',
-  'Propose values only where you can ground them in the given data (the design\'s width, application, elasticity ' +
-    'class or target elongation, thickness class, repeat geometry) or well-established narrow-fabric construction ' +
-    'convention. For constructionType, pick the single best match from the capability library\'s construction ' +
-    'list if one fits reasonably, otherwise omit it.',
-  'CRITICAL: for any field you cannot ground this way, OMIT it from the JSON entirely — do not invent a ' +
-    'specific-looking number (an exact yarn denier/count, picks or ends per cm, a machine/loom reference) you ' +
-    'have no basis for. Leaving a field blank is always better than a fabricated precise value.',
-  'Never include pricing, lead times, or cost. Never state or imply this design is approved for production.',
+    'for this product family (allowed construction types and width/elongation ranges), ordinary narrow-fabric ' +
+    'construction convention for this product family (below), and optionally technical details the customer ' +
+    'already entered.',
+  'Fill in every field you can, in two ways: (1) where the design\'s own data grounds a value directly (its ' +
+    'width, application, elasticity class, thickness class, repeat geometry, or a construction type chosen from ' +
+    'the capability library) state it plainly, with no suffix; (2) where the design does not specify something, ' +
+    'propose the ordinary, well-established value or range for this kind of narrow-fabric product per the ' +
+    'construction convention below, and end that value with " (typical)" — e.g. "150D (typical)" or ' +
+    '"16-20 picks/cm (typical)" — so the technical team can tell at a glance which values need verifying against ' +
+    'this specific order.',
+  'Prefer a realistic range over a single falsely precise figure when you are proposing a typical default ' +
+    '(e.g. "30-50 ends/cm (typical)", not "42 ends/cm").',
+  'The ONLY things you must never propose, typical or otherwise, are: a specific machine/loom reference (that ' +
+    'names this factory\'s own equipment and cannot be guessed — leave machineRef blank unless the design or ' +
+    'customer data actually names one) and any pricing, cost or lead time.',
+  'Never state or imply this design is approved for production.',
   'Respond ONLY with strict JSON matching the provided schema. No markdown, no commentary.',
+  'Ordinary narrow-fabric construction convention, by product family:',
+  '- Jacquard (J) narrow elastics: warp is typically polyester or nylon multifilament (75-150 denier) forming ' +
+    'ground and pattern ends; the elastic weft/core is typically covered spandex/elastane, single or double ' +
+    'covered; ends density commonly 30-60 ends/cm depending on width and color count; picks density commonly ' +
+    '14-22 picks/cm; GSM commonly 150 g/m² (light) to 350 g/m² (heavy) depending on thicknessClass; width ' +
+    'tolerance typically ±1mm; edges are woven-in (selvedge), not cut; finishing is typically heat-set/steam-set.',
+  '- Woven (W) tapes/webbing, elastic or non-elastic: warp is typically polyester, nylon or cotton depending on ' +
+    'application; weft is the same fiber, or covered spandex/rubber core when elastic; picks density commonly ' +
+    '10-20 picks/cm; ends density commonly 20-40 ends/cm depending on width; GSM commonly 100-400 g/m² depending ' +
+    'on thicknessClass; width tolerance typically ±1mm.',
+  '- Knitted (K) narrow elastics: typically warp-knit or weft-knit construction using polyester or nylon with a ' +
+    'covered spandex/elastane core; generally finer gauge than woven; GSM commonly 120-280 g/m² depending on ' +
+    'thicknessClass; width tolerance typically ±1mm.',
 ].join(' ');
 
 const RESPONSE_SCHEMA = {
