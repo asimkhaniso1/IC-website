@@ -110,6 +110,8 @@ export async function createFactoryOrder(input: { customerId:string; productId:s
   return data as string;
 }
 
+export async function listCustomerOrders(){const{data,error}=await client().from('orders').select('order_id,order_no,order_date,status,notes,customer:customers(customer_name,customer_code),items:order_items(order_item_id,quantity,product:products(product_code,description),uom:uoms(uom_code),production:production_orders(production_order_no,status,priority,planned_start_date,planned_end_date,batches:production_batches(batch_code,status,actual_quantity)))').order('created_at',{ascending:false});if(error)throw error;return data??[]}
+
 export async function listReceivingData() {
   const supabase=client();
   const [suppliers,materials,grns,uoms]=await Promise.all([
