@@ -27,6 +27,7 @@ const Machines = lazy(() => import('./factory/Machines'));
 const CustomerOrders = lazy(() => import('./factory/CustomerOrders'));
 const PurchaseOrders = lazy(() => import('./factory/PurchaseOrders'));
 const OperationsOverview = lazy(() => import('./factory/OperationsOverview'));
+const StockAdjustments = lazy(() => import('./factory/StockAdjustments'));
 
 function RouteLoading() {
   return (
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="/factory/orders" element={<CustomerOrders />} />
           <Route path="/factory/purchase-orders" element={<PurchaseOrders />} />
           <Route path="/factory/overview" element={<OperationsOverview />} />
+          <Route path="/factory/stock/adjustments" element={<StockAdjustments />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
