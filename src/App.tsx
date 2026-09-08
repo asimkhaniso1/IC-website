@@ -39,6 +39,7 @@ const MaterialIssues = lazy(() => import('./factory/MaterialIssues'));
 const DispatchSchedule = lazy(() => import('./factory/DispatchSchedule'));
 const FactoryUsers = lazy(() => import('./factory/FactoryUsers'));
 const ProcurementMaster = lazy(() => import('./factory/ProcurementMaster'));
+const ApprovalInbox = lazy(() => import('./factory/ApprovalInbox'));
 
 function RouteLoading() {
   return (
@@ -95,6 +96,7 @@ export default function App() {
           <Route path="/factory/dispatch/schedule" element={<DispatchSchedule />} />
           <Route path="/factory/users" element={<FactoryUsers />} />
           <Route path="/factory/master/procurement" element={<ProcurementMaster />} />
+          <Route path="/factory/approvals" element={<ApprovalInbox />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
