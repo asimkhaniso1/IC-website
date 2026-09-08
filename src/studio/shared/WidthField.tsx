@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Field, NumberField } from '../../components/ui/index';
+import { Field, NumberField, Slider } from '../../components/ui/index';
 import { useCapabilities } from '../../lib/capabilities';
 import { clamp, displayValue, parseToMm } from '../../lib/units';
 import type { DesignSpec, Unit } from '../../lib/types';
@@ -57,6 +57,17 @@ export function WidthField<S extends DesignSpec>({
           Custom
         </button>
       </div>
+
+      <Slider
+        min={minMm}
+        max={maxMm}
+        step={1}
+        value={clamp(spec.widthMm, minMm, maxMm)}
+        onChange={(e) => {
+          setCustomOpen(false);
+          onChange({ ...spec, widthMm: Number(e.target.value) });
+        }}
+      />
 
       {showCustomInput && (
         <div className="mt-2 flex items-center gap-2">

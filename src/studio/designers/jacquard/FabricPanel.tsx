@@ -24,6 +24,8 @@ export function FabricPanel({
   return (
     <Panel title="Fabric" collapsible defaultOpen>
       <div className="flex flex-col gap-4">
+        <ApplicationField spec={spec} onChange={onChange} />
+
         <WidthField spec={spec} onChange={onChange} minMm={CAP.minWidthMm} maxMm={CAP.maxWidthMm} />
         <RollLengthField spec={spec} onChange={onChange} />
 
@@ -70,8 +72,6 @@ export function FabricPanel({
           value={spec.edgeColor ?? spec.baseColor}
           onChange={(hex) => onChange({ ...spec, edgeColor: hex })}
         />
-
-        <ApplicationField spec={spec} onChange={onChange} />
       </div>
     </Panel>
   );

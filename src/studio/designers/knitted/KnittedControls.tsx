@@ -102,6 +102,7 @@ export function KnittedControls({ spec, onChange, disabled }: DesignerControlsPr
 
       <Panel title="Fabric" collapsible defaultOpen>
         <div className="flex flex-col gap-3">
+          <ApplicationField spec={spec} onChange={onChange} />
           <WidthField spec={spec} onChange={onChange} minMm={caps.minWidthMm} maxMm={caps.maxWidthMm} />
           <RollLengthField spec={spec} onChange={onChange} />
         </div>
@@ -142,10 +143,6 @@ export function KnittedControls({ spec, onChange, disabled }: DesignerControlsPr
             </Button>
           </div>
         </Field>
-
-        <div className="mt-3">
-          <ApplicationField spec={spec} onChange={onChange} />
-        </div>
 
         <div className="grid grid-cols-2 gap-3 mt-3">
           <Field label="Edge style">

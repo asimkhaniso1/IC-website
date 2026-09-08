@@ -1,9 +1,14 @@
 import { useState } from 'react';
-import { Field, NumberField } from '../../components/ui/index';
+import { Field, NumberField, Slider } from '../../components/ui/index';
 import { useCapabilities } from '../../lib/capabilities';
+import { clamp } from '../../lib/units';
 import type { DesignSpec } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
 import { chipClass } from './chipStyles';
+
+/** Slider stopper bounds — there's no capability-defined roll length range, so these are sane fixed defaults. */
+const MIN_ROLL_M = 1;
+const MAX_ROLL_M = 500;
 
 /** Customer-facing roll length picker: standard preset chips + Custom number input. */
 export function RollLengthField<S extends DesignSpec>({
@@ -42,6 +47,17 @@ export function RollLengthField<S extends DesignSpec>({
           Custom
         </button>
       </div>
+
+      <Slider
+        min={MIN_ROLL_M}
+        max={MAX_ROLL_M}
+        step={1}
+        value={clamp(spec.rollLengthM, MIN_ROLL_M, MAX_ROLL_M)}
+        onChange={(e) => {
+          setCustomOpen(false);
+          onChange({ ...spec, rollLengthM: Number(e.target.value) });
+        }}
+      />
 
       {showCustomInput && (
         <div className="mt-2">
