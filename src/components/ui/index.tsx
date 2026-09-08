@@ -83,7 +83,7 @@ export function Panel({
 
   return (
     <section
-      className={`bg-white border border-slate-200 rounded-xl shadow-sm ${className}`}
+      className={`overflow-hidden bg-white border border-slate-200 rounded-xl shadow-sm ${className}`}
     >
       {title !== undefined &&
         (collapsible ? (
@@ -91,11 +91,11 @@ export function Panel({
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left ${
+            className={`flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 px-4 py-3 text-left ${
               showBody ? 'border-b border-slate-100' : ''
             }`}
           >
-            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+            <span className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
               {title}
               {action}
             </span>
@@ -104,8 +104,8 @@ export function Panel({
             />
           </button>
         ) : (
-          <header className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">
+          <header className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-4 py-3 border-b border-slate-100">
+            <h3 className="min-w-0 text-xs font-bold uppercase tracking-widest text-slate-500">
               {title}
             </h3>
             {action}

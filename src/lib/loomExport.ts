@@ -6,21 +6,33 @@
  *   loom-data.csv          — full construction & technical data sheet
  *   pattern-grid.png       — Jacquard only: one pixel per warp-end × weft-pick
  *                            intersection, sized from the approved ends/cm and
- *                            picks/cm density. This is the raw raster most
- *                            jacquard CAD/loom-preparation tools ingest.
+ *                            picks/cm density. Every pixel is quantized to the
+ *                            design's own declared yarn colors (never a
+ *                            smoothed/blended shade — a loom can't weave a
+ *                            color that isn't one of its loaded yarns), so
+ *                            this is a true discrete design graph, not a
+ *                            photo. This is the raster most jacquard
+ *                            CAD/loom-preparation tools ingest.
  *   pattern-grid-preview.png — the same grid, nearest-neighbor magnified so a
  *                            human can sanity-check it without CAD software.
+ *   color-key.csv           — which color plays which role (Base/Ground,
+ *                            Motif, Secondary, ...) with its yarn shade name
+ *                            — answers "which warp/weft, what colour" for
+ *                            every cell in the grid above.
  *
  * This does not talk to any loom controller or vendor CAD system — there is
- * no such integration configured for this deployment. It turns data the
- * technical team already entered and approved into a portable, loom-agnostic
- * package. Verify against your specific loom/CAD software's exact format
- * requirements before use on the floor.
+ * no such integration configured for this deployment (that would need to
+ * know which specific control software/protocol your looms actually take
+ * input from). It turns data the technical team already entered and
+ * approved into a portable, loom-agnostic package. Verify against your
+ * specific loom/CAD software's exact format requirements before use on the
+ * floor.
  */
 import JSZip from 'jszip';
 import { TECHNICAL_FIELD_DEFS } from '../pages/admin/components/ProductionSpecPanel';
 import { FAMILY_BY_CODE } from './constants';
 import { revisionLabel } from './ids';
+import { hexToRgb } from './color';
 import { colorLabel } from '../studio/color/naming';
 import type { DesignSpec, JacquardSpec, KnittedSpec, ProductionSpec, WovenSpec } from './types';
 
@@ -241,11 +253,80 @@ async function renderJacquardCellCanvas(spec: JacquardSpec, pxPerMm: number): Pr
   return canvas;
 }
 
+export interface PaletteEntry {
+  hex: string;
+  /** Which part of the design this color plays — e.g. "Base / Ground", "Motif". */
+  role: string;
+  /** Yarn shade / Pantone name, e.g. "Navy (IC-003)". */
+  label: string;
+}
+
+/**
+ * The design's actual declared yarn colors, deduplicated — this IS the loom's
+ * available color set. A jacquard loom cannot weave an arbitrary blended
+ * shade; every warp end and weft pick is one of these colors or none at all.
+ */
+export function buildJacquardPalette(spec: JacquardSpec): PaletteEntry[] {
+  const entries: PaletteEntry[] = [];
+  const seen = new Set<string>();
+  const add = (hex: string | undefined, role: string) => {
+    if (!hex) return;
+    const norm = hex.trim().toLowerCase();
+    if (seen.has(norm)) return;
+    seen.add(norm);
+    entries.push({ hex, role, label: colorLabel(hex) });
+  };
+  add(spec.baseColor, 'Base / Ground');
+  add(spec.fg, 'Motif');
+  add(spec.secondaryColor, 'Secondary');
+  add(spec.accentColor, 'Accent');
+  add(spec.edgeColor, 'Edge');
+  (spec.additionalColors ?? []).forEach((c, i) => add(c, `Additional ${i + 1}`));
+  return entries;
+}
+
+/**
+ * Snaps every pixel of `canvas` to the nearest color in `palette` (by RGB
+ * distance). Without this, a smooth image resize leaves blended/anti-aliased
+ * shades at every edge — colors that don't correspond to any actual yarn and
+ * can't physically be woven. The quantized result is a true discrete design
+ * graph: every cell is exactly one real color, or none (transparent).
+ */
+function quantizeToPalette(canvas: HTMLCanvasElement, palette: PaletteEntry[]): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx || palette.length === 0) return;
+  const rgbPalette = palette
+    .map((p) => ({ ...hexToRgb(p.hex), hex: p.hex }))
+    .filter((p): p is { r: number; g: number; b: number; hex: string } => p.r !== undefined);
+  if (rgbPalette.length === 0) return;
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const px = imageData.data;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] === 0) continue; // leave fully transparent pixels alone
+    let best = rgbPalette[0];
+    let bestDist = Infinity;
+    for (const c of rgbPalette) {
+      const d = (px[i] - c.r) ** 2 + (px[i + 1] - c.g) ** 2 + (px[i + 2] - c.b) ** 2;
+      if (d < bestDist) {
+        bestDist = d;
+        best = c;
+      }
+    }
+    px[i] = best.r;
+    px[i + 1] = best.g;
+    px[i + 2] = best.b;
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
 /**
  * Builds a self-contained (spec-only, no live preview dependency) pattern
  * grid with one pixel per warp-end × weft-pick intersection — the raw raster
  * format most jacquard CAD/loom-prep tools ingest — plus a nearest-neighbor
- * magnified copy for human review.
+ * magnified copy for human review. Every pixel is quantized to the design's
+ * actual declared colors (see buildJacquardPalette) so the graph only ever
+ * contains colors that exist as real yarn, never a smoothed blend.
  */
 export async function buildPatternGridPngs(
   spec: JacquardSpec,
@@ -259,6 +340,7 @@ export async function buildPatternGridPngs(
   }
 
   const cell = await renderJacquardCellCanvas(spec, 8);
+  const palette = buildJacquardPalette(spec);
 
   const raw = document.createElement('canvas');
   raw.width = cols;
@@ -267,6 +349,7 @@ export async function buildPatternGridPngs(
   if (!rctx) throw new LoomExportError('Canvas is not available in this browser.');
   rctx.imageSmoothingEnabled = true;
   rctx.drawImage(cell, 0, 0, raw.width, raw.height);
+  quantizeToPalette(raw, palette);
   const dataGridPng = raw.toDataURL('image/png');
 
   const CELL_PX = 6;
@@ -280,6 +363,18 @@ export async function buildPatternGridPngs(
   const previewPng = preview.toDataURL('image/png');
 
   return { dataGridPng, previewPng, cols, rows };
+}
+
+/** "which warp/weft, what colour" reference — every distinct color used in the graph, by role and yarn name. */
+export function buildColorKeyCsv(palette: PaletteEntry[]): string {
+  let csv = csvSection('WARP / WEFT COLOR KEY (for the pattern grid image)');
+  csv += csvRow('Role', 'Color (Hex — Yarn / Pantone reference)');
+  for (const p of palette) {
+    csv += csvRow(p.role, `${p.hex} — ${p.label}`);
+  }
+  csv +=
+    '\n"Every cell in pattern-grid.png is exactly one of the colors above — no blended shades. Base / Ground is the warp/ground color; Motif and any other listed colors are the pattern colors placed by weft/color-change according to the artwork."\n';
+  return csv;
 }
 
 // ---------------------------------------------------------------------------
@@ -328,6 +423,7 @@ export async function buildLoomExportZip(
         const { dataGridPng, previewPng } = await buildPatternGridPngs(j, endsPerCm, picksPerCm);
         zip.file('pattern-grid.png', dataUrlToBase64(dataGridPng), { base64: true });
         zip.file('pattern-grid-preview.png', dataUrlToBase64(previewPng), { base64: true });
+        zip.file('color-key.csv', buildColorKeyCsv(buildJacquardPalette(j)));
         patternGrid = { included: true };
       } else {
         patternGrid = { included: false, reason: 'no-density' };

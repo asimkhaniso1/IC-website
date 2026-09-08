@@ -198,8 +198,8 @@ export function ProductionSpecPanel({
         </span>
       }
       action={
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400">
-          <Lock className="w-3 h-3" /> Internal — never shown to the customer
+        <span className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-slate-400">
+          <Lock className="w-3 h-3 shrink-0" /> Internal — never shown to the customer
         </span>
       }
     >
