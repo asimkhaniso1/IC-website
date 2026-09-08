@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { Field, NumberField, Slider } from '../../components/ui/index';
+import { Field, NumberField, Select, Slider } from '../../components/ui/index';
 import { useCapabilities } from '../../lib/capabilities';
 import { clamp, displayValue, parseToMm } from '../../lib/units';
 import type { DesignSpec, Unit } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
-import { chipClass } from './chipStyles';
+
+const CUSTOM_VALUE = '__custom__';
 
 /**
- * Customer-facing width picker: standard preset chips (filtered to the
- * buildable range for this product type) plus a "Custom" chip that reveals
- * a precise mm/in input. Selecting a preset sets widthMm directly.
+ * Customer-facing width picker: a dropdown of standard preset widths
+ * (filtered to the buildable range for this product type) plus "Custom",
+ * a slider for continuous fine adjustment, and — only in Custom — a precise
+ * mm/in input. Selecting a preset sets widthMm directly.
  */
 export function WidthField<S extends DesignSpec>({
   spec,
@@ -35,28 +37,24 @@ export function WidthField<S extends DesignSpec>({
 
   return (
     <Field label="Width" tooltip={GLOSSARY.width}>
-      <div className="flex flex-wrap gap-1.5">
+      <Select
+        value={showCustomInput ? CUSTOM_VALUE : String(spec.widthMm)}
+        onChange={(e) => {
+          if (e.target.value === CUSTOM_VALUE) {
+            setCustomOpen(true);
+            return;
+          }
+          setCustomOpen(false);
+          onChange({ ...spec, widthMm: Number(e.target.value) });
+        }}
+      >
         {presets.map((w) => (
-          <button
-            key={w}
-            type="button"
-            onClick={() => {
-              setCustomOpen(false);
-              onChange({ ...spec, widthMm: w });
-            }}
-            className={chipClass(!showCustomInput && spec.widthMm === w)}
-          >
+          <option key={w} value={w}>
             {w} mm
-          </button>
+          </option>
         ))}
-        <button
-          type="button"
-          onClick={() => setCustomOpen(true)}
-          className={chipClass(showCustomInput)}
-        >
-          Custom
-        </button>
-      </div>
+        <option value={CUSTOM_VALUE}>Custom</option>
+      </Select>
 
       <Slider
         min={minMm}

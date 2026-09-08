@@ -1,16 +1,16 @@
 import { useState } from 'react';
-import { Field, NumberField, Slider } from '../../components/ui/index';
+import { Field, NumberField, Select, Slider } from '../../components/ui/index';
 import { useCapabilities } from '../../lib/capabilities';
 import { clamp } from '../../lib/units';
 import type { DesignSpec } from '../../lib/types';
 import { GLOSSARY } from '../glossary';
-import { chipClass } from './chipStyles';
 
 /** Slider stopper bounds — there's no capability-defined roll length range, so these are sane fixed defaults. */
 const MIN_ROLL_M = 1;
 const MAX_ROLL_M = 500;
+const CUSTOM_VALUE = '__custom__';
 
-/** Customer-facing roll length picker: standard preset chips + Custom number input. */
+/** Customer-facing roll length picker: a dropdown of standard presets + Custom, plus a slider for continuous fine adjustment. */
 export function RollLengthField<S extends DesignSpec>({
   spec,
   onChange,
@@ -25,28 +25,24 @@ export function RollLengthField<S extends DesignSpec>({
 
   return (
     <Field label="Roll length" tooltip={GLOSSARY.rollLength}>
-      <div className="flex flex-wrap gap-1.5">
+      <Select
+        value={showCustomInput ? CUSTOM_VALUE : String(spec.rollLengthM)}
+        onChange={(e) => {
+          if (e.target.value === CUSTOM_VALUE) {
+            setCustomOpen(true);
+            return;
+          }
+          setCustomOpen(false);
+          onChange({ ...spec, rollLengthM: Number(e.target.value) });
+        }}
+      >
         {rollLengths.map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => {
-              setCustomOpen(false);
-              onChange({ ...spec, rollLengthM: m });
-            }}
-            className={chipClass(!showCustomInput && spec.rollLengthM === m)}
-          >
+          <option key={m} value={m}>
             {m} m
-          </button>
+          </option>
         ))}
-        <button
-          type="button"
-          onClick={() => setCustomOpen(true)}
-          className={chipClass(showCustomInput)}
-        >
-          Custom
-        </button>
-      </div>
+        <option value={CUSTOM_VALUE}>Custom</option>
+      </Select>
 
       <Slider
         min={MIN_ROLL_M}
