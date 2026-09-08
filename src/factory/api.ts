@@ -119,13 +119,14 @@ export async function listOperationsDashboard(){const s=client(),today=new Date(
 
 export async function listReceivingData() {
   const supabase=client();
-  const [suppliers,materials,grns,uoms]=await Promise.all([
+  const [suppliers,materials,grns,uoms,purchaseOrders]=await Promise.all([
     supabase.from('suppliers').select('supplier_id,supplier_code,supplier_name').eq('active_status',true).order('supplier_name'),
     supabase.from('materials').select('material_id,material_code,material_name').eq('active_status',true).order('material_name'),
-    supabase.from('grns').select('grn_id,grn_no,grn_date,status,ownership,supplier:suppliers(supplier_name),lines:grn_lines(qty,total_weight)').order('created_at',{ascending:false}).limit(25),
+    supabase.from('grns').select('grn_id,grn_no,grn_date,status,ownership,supplier:suppliers(supplier_name),purchase_order:purchase_orders(purchase_order_no),lines:grn_lines(qty,total_weight)').order('created_at',{ascending:false}).limit(25),
     supabase.from('uoms').select('uom_id,uom_code').eq('active_status',true),
-  ]); for(const r of [suppliers,materials,grns,uoms])if(r.error)throw r.error;
-  return {suppliers:suppliers.data??[],materials:materials.data??[],grns:grns.data??[],uoms:uoms.data??[]};
+    supabase.from('purchase_orders').select('purchase_order_id,purchase_order_no,supplier_id,status,lines:purchase_order_lines(item_description,quantity,uom_text)').in('status',['ISSUED','PART_RECEIVED']).order('created_at'),
+  ]); for(const r of [suppliers,materials,grns,uoms,purchaseOrders])if(r.error)throw r.error;
+  return {suppliers:suppliers.data??[],materials:materials.data??[],grns:grns.data??[],uoms:uoms.data??[],purchaseOrders:purchaseOrders.data??[]};
 }
 
 export async function createReceivingMaster(kind:'supplier'|'material',values:Record<string,unknown>){
@@ -135,6 +136,7 @@ export async function createReceivingMaster(kind:'supplier'|'material',values:Re
 export async function postGrn(input:{supplierId:string;ownership:string;driver?:string;vehicle?:string;receivedBy?:string;lines:Array<Record<string,unknown>>}){
   const {data,error}=await client().rpc('post_factory_grn',{p_supplier:input.supplierId,p_ownership:input.ownership,p_driver:input.driver||null,p_vehicle:input.vehicle||null,p_lines:input.lines,p_received_by:input.receivedBy||null});if(error)throw error;return data as string;
 }
+export async function postPurchaseOrderGrn(input:{purchaseOrderId:string;ownership:string;driver?:string;vehicle?:string;receivedBy?:string;lines:Array<Record<string,unknown>>}){const{data,error}=await client().rpc('post_factory_po_grn',{p_purchase_order:input.purchaseOrderId,p_ownership:input.ownership,p_driver:input.driver||null,p_vehicle:input.vehicle||null,p_lines:input.lines,p_received_by:input.receivedBy||null});if(error)throw error;return data as string}
 
 export async function listPurchaseRequests(){const{data,error}=await client().from('purchase_requests').select('purchase_request_id,purchase_request_no,request_date,requested_by,department,purpose,status,lines:purchase_request_lines(item_description,quantity,rate,uom_text),approvals:purchase_request_approvals(approval_level,approver_name,approved_at)').order('created_at',{ascending:false});if(error)throw error;return data??[]}
 export async function createPurchaseRequest(input:{requestedBy:string;department:string;purpose:string;remarks:string;lines:Array<Record<string,unknown>>}){const{data,error}=await client().rpc('create_purchase_request',{p_requested_by:input.requestedBy,p_department:input.department,p_purpose:input.purpose,p_remarks:input.remarks||null,p_lines:input.lines});if(error)throw error;return data as string}
