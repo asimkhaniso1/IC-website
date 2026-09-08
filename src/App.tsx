@@ -20,6 +20,7 @@ const GatePass = lazy(() => import('./factory/GatePass'));
 const StockRegister = lazy(() => import('./factory/StockRegister'));
 const AuditLog = lazy(() => import('./factory/AuditLog'));
 const QualityControl = lazy(() => import('./factory/QualityControl'));
+const Packing = lazy(() => import('./factory/Packing'));
 
 function RouteLoading() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/factory/stock/register" element={<StockRegister />} />
           <Route path="/factory/audit" element={<AuditLog />} />
           <Route path="/factory/qc" element={<QualityControl />} />
+          <Route path="/factory/packing" element={<Packing />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
