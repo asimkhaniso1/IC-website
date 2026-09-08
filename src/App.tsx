@@ -22,6 +22,7 @@ const AuditLog = lazy(() => import('./factory/AuditLog'));
 const QualityControl = lazy(() => import('./factory/QualityControl'));
 const Packing = lazy(() => import('./factory/Packing'));
 const Dispatch = lazy(() => import('./factory/Dispatch'));
+const Traceability = lazy(() => import('./factory/Traceability'));
 
 function RouteLoading() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/factory/qc" element={<QualityControl />} />
           <Route path="/factory/packing" element={<Packing />} />
           <Route path="/factory/dispatch" element={<Dispatch />} />
+          <Route path="/factory/traceability" element={<Traceability />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
