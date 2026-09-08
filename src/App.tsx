@@ -41,6 +41,7 @@ const FactoryUsers = lazy(() => import('./factory/FactoryUsers'));
 const ProcurementMaster = lazy(() => import('./factory/ProcurementMaster'));
 const ApprovalInbox = lazy(() => import('./factory/ApprovalInbox'));
 const Quotations = lazy(() => import('./factory/Quotations'));
+const SampleDevelopment = lazy(() => import('./factory/SampleDevelopment'));
 
 function RouteLoading() {
   return (
@@ -99,6 +100,7 @@ export default function App() {
           <Route path="/factory/master/procurement" element={<ProcurementMaster />} />
           <Route path="/factory/approvals" element={<ApprovalInbox />} />
           <Route path="/factory/quotations" element={<Quotations />} />
+          <Route path="/factory/samples" element={<SampleDevelopment />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
