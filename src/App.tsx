@@ -32,6 +32,7 @@ const StockTransfers = lazy(() => import('./factory/StockTransfers'));
 const StockTake = lazy(() => import('./factory/StockTake'));
 const QualityAnalytics = lazy(() => import('./factory/QualityAnalytics'));
 const Maintenance = lazy(() => import('./factory/Maintenance'));
+const BomRoutings = lazy(() => import('./factory/BomRoutings'));
 
 function RouteLoading() {
   return (
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="/factory/stock/take" element={<StockTake />} />
           <Route path="/factory/qc/analytics" element={<QualityAnalytics />} />
           <Route path="/factory/maintenance" element={<Maintenance />} />
+          <Route path="/factory/master/bom-routings" element={<BomRoutings />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
