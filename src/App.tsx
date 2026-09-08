@@ -11,6 +11,7 @@ const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminDesignEdit = lazy(() => import('./pages/admin/AdminDesignEdit'));
 const FactoryDashboard = lazy(() => import('./factory/FactoryDashboard'));
 const StockLedger = lazy(() => import('./factory/StockLedger'));
+const FactorySetup = lazy(() => import('./factory/FactorySetup'));
 
 function RouteLoading() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/factory" element={<FactoryDashboard />} />
           <Route path="/factory/stock" element={<StockLedger />} />
+          <Route path="/factory/setup" element={<FactorySetup />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

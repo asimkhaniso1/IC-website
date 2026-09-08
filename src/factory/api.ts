@@ -81,3 +81,31 @@ export async function listStock() {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function listSetupData() {
+  const supabase = client();
+  const [groups, customers, products, operators, machines] = await Promise.all([
+    supabase.from('machine_groups').select('machine_group_id,group_name').eq('active_status', true).order('display_order'),
+    supabase.from('customers').select('customer_id,customer_code,customer_name').eq('active_status', true).order('customer_name'),
+    supabase.from('products').select('product_id,product_code,description').eq('active_status', true).order('description'),
+    supabase.from('operators').select('operator_id,operator_code,full_name').eq('active_status', true).order('full_name'),
+    supabase.from('machines').select('machine_id,legacy_machine_no,machine_name,machine_group(group_name)').eq('active_status', true).order('legacy_machine_no'),
+  ]);
+  for (const result of [groups, customers, products, operators, machines]) if (result.error) throw result.error;
+  return { groups: groups.data ?? [], customers: customers.data ?? [], products: products.data ?? [], operators: operators.data ?? [], machines: machines.data ?? [] };
+}
+
+export async function createMaster(kind: 'customer'|'product'|'operator'|'machine', values: Record<string, unknown>) {
+  const table = ({ customer: 'customers', product: 'products', operator: 'operators', machine: 'machines' } as const)[kind];
+  const { error } = await client().from(table).insert(values);
+  if (error) throw error;
+}
+
+export async function createFactoryOrder(input: { customerId:string; productId:string; quantity:number; notes?:string }) {
+  const { data, error } = await client().rpc('create_factory_order', {
+    p_customer: input.customerId, p_product: input.productId, p_quantity: input.quantity,
+    p_notes: input.notes || null,
+  });
+  if (error) throw error;
+  return data as string;
+}
