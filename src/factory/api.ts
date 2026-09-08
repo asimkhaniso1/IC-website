@@ -76,7 +76,7 @@ export async function completeBatch(batchId: string) {
 
 export async function listStock() {
   const { data, error } = await client().from('stock_ledger')
-    .select('stock_ledger_id,transaction_date,quantity,stock_category,ownership,reference_note,product:products(product_code,description),uom:uoms(uom_code),location:locations(location_name)')
+    .select('stock_ledger_id,transaction_date,quantity,stock_category,ownership,reference_note,product:products(product_code,description),material:materials(material_code,material_name),uom:uoms(uom_code),location:locations(location_name)')
     .order('transaction_date', { ascending: false }).limit(100);
   if (error) throw error;
   return data ?? [];
@@ -108,4 +108,23 @@ export async function createFactoryOrder(input: { customerId:string; productId:s
   });
   if (error) throw error;
   return data as string;
+}
+
+export async function listReceivingData() {
+  const supabase=client();
+  const [suppliers,materials,grns,uoms]=await Promise.all([
+    supabase.from('suppliers').select('supplier_id,supplier_code,supplier_name').eq('active_status',true).order('supplier_name'),
+    supabase.from('materials').select('material_id,material_code,material_name').eq('active_status',true).order('material_name'),
+    supabase.from('grns').select('grn_id,grn_no,grn_date,status,ownership,supplier:suppliers(supplier_name),lines:grn_lines(qty,total_weight)').order('created_at',{ascending:false}).limit(25),
+    supabase.from('uoms').select('uom_id,uom_code').eq('active_status',true),
+  ]); for(const r of [suppliers,materials,grns,uoms])if(r.error)throw r.error;
+  return {suppliers:suppliers.data??[],materials:materials.data??[],grns:grns.data??[],uoms:uoms.data??[]};
+}
+
+export async function createReceivingMaster(kind:'supplier'|'material',values:Record<string,unknown>){
+  const {error}=await client().from(kind==='supplier'?'suppliers':'materials').insert(values);if(error)throw error;
+}
+
+export async function postGrn(input:{supplierId:string;ownership:string;driver?:string;vehicle?:string;receivedBy?:string;lines:Array<Record<string,unknown>>}){
+  const {data,error}=await client().rpc('post_factory_grn',{p_supplier:input.supplierId,p_ownership:input.ownership,p_driver:input.driver||null,p_vehicle:input.vehicle||null,p_lines:input.lines,p_received_by:input.receivedBy||null});if(error)throw error;return data as string;
 }
