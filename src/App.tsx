@@ -26,6 +26,7 @@ const Traceability = lazy(() => import('./factory/Traceability'));
 const Machines = lazy(() => import('./factory/Machines'));
 const CustomerOrders = lazy(() => import('./factory/CustomerOrders'));
 const PurchaseOrders = lazy(() => import('./factory/PurchaseOrders'));
+const OperationsOverview = lazy(() => import('./factory/OperationsOverview'));
 
 function RouteLoading() {
   return (
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/factory/machines" element={<Machines />} />
           <Route path="/factory/orders" element={<CustomerOrders />} />
           <Route path="/factory/purchase-orders" element={<PurchaseOrders />} />
+          <Route path="/factory/overview" element={<OperationsOverview />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
