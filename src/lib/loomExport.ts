@@ -13,6 +13,10 @@
  *                            this is a true discrete design graph, not a
  *                            photo. This is the raster most jacquard
  *                            CAD/loom-preparation tools ingest.
+ *   pattern-grid.bmp        — the same grid as an uncompressed 24-bit BMP —
+ *                            for basic embedded jacquard controllers that
+ *                            read a design straight off a USB stick with no
+ *                            PC software, which usually can't decode PNG.
  *   pattern-grid-preview.png — the same grid, nearest-neighbor magnified so a
  *                            human can sanity-check it without CAD software.
  *   color-key.csv           — which color plays which role (Base/Ground,
@@ -321,18 +325,78 @@ function quantizeToPalette(canvas: HTMLCanvasElement, palette: PaletteEntry[]): 
 }
 
 /**
+ * Encodes `canvas` as an uncompressed 24-bit BMP — no PNG-style compression,
+ * which makes it the format most basic embedded jacquard controllers can
+ * decode (some only take a design via a bitmap dropped on a USB stick, no PC
+ * software at all). Canvas has no native BMP export, so this writes the
+ * file byte-for-byte per the standard BITMAPFILEHEADER/BITMAPINFOHEADER
+ * layout: bottom-up row order, BGR pixel order, rows padded to 4 bytes.
+ * Transparent pixels are composited onto white — BMP-24 has no alpha channel.
+ */
+function canvasToBmpBlob(canvas: HTMLCanvasElement): Blob {
+  const w = canvas.width;
+  const h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new LoomExportError('Canvas is not available in this browser.');
+  const { data } = ctx.getImageData(0, 0, w, h);
+
+  const rowSize = Math.ceil((w * 3) / 4) * 4;
+  const pixelArraySize = rowSize * h;
+  const fileSize = 54 + pixelArraySize;
+
+  const buf = new ArrayBuffer(fileSize);
+  const view = new DataView(buf);
+
+  view.setUint8(0, 0x42); // 'B'
+  view.setUint8(1, 0x4d); // 'M'
+  view.setUint32(2, fileSize, true);
+  view.setUint32(6, 0, true);
+  view.setUint32(10, 54, true); // pixel data offset
+
+  view.setUint32(14, 40, true); // DIB header size (BITMAPINFOHEADER)
+  view.setInt32(18, w, true);
+  view.setInt32(22, h, true); // positive height = bottom-up row order
+  view.setUint16(26, 1, true); // planes
+  view.setUint16(28, 24, true); // bits per pixel
+  view.setUint32(30, 0, true); // compression: none
+  view.setUint32(34, pixelArraySize, true);
+  view.setInt32(38, 0, true);
+  view.setInt32(42, 0, true);
+  view.setUint32(46, 0, true);
+  view.setUint32(50, 0, true);
+
+  let offset = 54;
+  for (let y = h - 1; y >= 0; y--) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const alpha = data[i + 3] / 255;
+      const r = Math.round(data[i] * alpha + 255 * (1 - alpha));
+      const g = Math.round(data[i + 1] * alpha + 255 * (1 - alpha));
+      const b = Math.round(data[i + 2] * alpha + 255 * (1 - alpha));
+      view.setUint8(offset++, b);
+      view.setUint8(offset++, g);
+      view.setUint8(offset++, r);
+    }
+    for (let p = 0; p < rowSize - w * 3; p++) view.setUint8(offset++, 0);
+  }
+
+  return new Blob([buf], { type: 'image/bmp' });
+}
+
+/**
  * Builds a self-contained (spec-only, no live preview dependency) pattern
  * grid with one pixel per warp-end × weft-pick intersection — the raw raster
  * format most jacquard CAD/loom-prep tools ingest — plus a nearest-neighbor
- * magnified copy for human review. Every pixel is quantized to the design's
- * actual declared colors (see buildJacquardPalette) so the graph only ever
- * contains colors that exist as real yarn, never a smoothed blend.
+ * magnified copy for human review, and an uncompressed BMP of the same grid
+ * for basic hardware that can't decode PNG. Every pixel is quantized to the
+ * design's actual declared colors (see buildJacquardPalette) so the graph
+ * only ever contains colors that exist as real yarn, never a smoothed blend.
  */
 export async function buildPatternGridPngs(
   spec: JacquardSpec,
   endsPerCm: number,
   picksPerCm: number
-): Promise<{ dataGridPng: string; previewPng: string; cols: number; rows: number }> {
+): Promise<{ dataGridPng: string; previewPng: string; gridBmp: Blob; cols: number; rows: number }> {
   const cols = Math.max(1, Math.round((spec.repeat.lengthMm / 10) * picksPerCm));
   const rows = Math.max(1, Math.round((spec.widthMm / 10) * endsPerCm));
   if (cols > 4000 || rows > 4000) {
@@ -351,6 +415,7 @@ export async function buildPatternGridPngs(
   rctx.drawImage(cell, 0, 0, raw.width, raw.height);
   quantizeToPalette(raw, palette);
   const dataGridPng = raw.toDataURL('image/png');
+  const gridBmp = canvasToBmpBlob(raw);
 
   const CELL_PX = 6;
   const preview = document.createElement('canvas');
@@ -362,7 +427,7 @@ export async function buildPatternGridPngs(
   pctx.drawImage(raw, 0, 0, preview.width, preview.height);
   const previewPng = preview.toDataURL('image/png');
 
-  return { dataGridPng, previewPng, cols, rows };
+  return { dataGridPng, previewPng, gridBmp, cols, rows };
 }
 
 /** "which warp/weft, what colour" reference — every distinct color used in the graph, by role and yarn name. */
@@ -420,8 +485,9 @@ export async function buildLoomExportZip(
       const endsPerCm = parsePositive(productionSpec.details.endsPerCm);
       const picksPerCm = parsePositive(productionSpec.details.picksPerCm);
       if (endsPerCm && picksPerCm) {
-        const { dataGridPng, previewPng } = await buildPatternGridPngs(j, endsPerCm, picksPerCm);
+        const { dataGridPng, previewPng, gridBmp } = await buildPatternGridPngs(j, endsPerCm, picksPerCm);
         zip.file('pattern-grid.png', dataUrlToBase64(dataGridPng), { base64: true });
+        zip.file('pattern-grid.bmp', gridBmp);
         zip.file('pattern-grid-preview.png', dataUrlToBase64(previewPng), { base64: true });
         zip.file('color-key.csv', buildColorKeyCsv(buildJacquardPalette(j)));
         patternGrid = { included: true };

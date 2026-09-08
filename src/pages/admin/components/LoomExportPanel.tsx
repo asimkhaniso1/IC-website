@@ -75,8 +75,8 @@ export function LoomExportPanel({
         <p className="text-xs leading-relaxed text-slate-500">
           Packages the <span className="font-medium text-slate-600">approved production specification</span> into a
           construction data sheet (CSV) and, for Jacquard designs with ends/cm and picks/cm set, a discrete
-          warp-end × weft-pick pattern grid quantized to the design's own yarn colors — plus a color key naming
-          which color plays which role — for the technical team to prepare against your loom/CAD system.
+          warp-end × weft-pick pattern grid quantized to the design's own yarn colors (PNG and BMP) plus a color key
+          naming which color plays which role — for the technical team to prepare against your loom/CAD system.
         </p>
 
         {!ready && (
