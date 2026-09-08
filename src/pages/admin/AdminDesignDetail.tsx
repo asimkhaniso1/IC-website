@@ -15,6 +15,7 @@ import { useSession } from '../../auth/useSession';
 import { AdminChrome } from './components/AdminChrome';
 import { STATUS_TONE } from './components/statusTone';
 import { ProductionSpecPanel } from './components/ProductionSpecPanel';
+import { LoomExportPanel } from './components/LoomExportPanel';
 import {
   addComment,
   createAdminRevision,
@@ -339,6 +340,14 @@ function DetailBody({ id }: { id: string }) {
             productionSpec={detail.productionSpec}
             actorEmail={actorEmail}
             onSaved={() => setRefreshKey((k) => k + 1)}
+          />
+
+          <LoomExportPanel
+            spec={project.spec}
+            productionSpec={detail.productionSpec}
+            designCode={project.designCode}
+            revisionNo={project.revisionNo}
+            preparedBy={actorEmail}
           />
 
           <Panel title="Weavability / Manufacturability">
