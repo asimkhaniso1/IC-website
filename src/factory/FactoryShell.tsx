@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { ClipboardList, Factory, LogOut, PackageOpen, Settings2, Truck } from 'lucide-react';
+import { ClipboardList, Factory, Home, LogOut, PackageOpen, Settings2, ShoppingCart, Truck } from 'lucide-react';
 import { useSession } from '../auth/useSession';
 import { COMPANY } from '../lib/constants';
 
 export default function FactoryShell({ children }: { children: ReactNode }) {
   const { session, signOut } = useSession();
-  const nav = [{ to: '/factory', label: 'Production', icon: Factory }, { to: '/factory/grn', label: 'Goods receiving', icon: Truck }, { to: '/factory/stock', label: 'Stock ledger', icon: PackageOpen }, { to: '/factory/setup', label: 'Setup', icon: Settings2 }];
+  const nav = [{ to: '/factory', label: 'Home', icon: Home }, { to: '/factory/production', label: 'Production', icon: Factory }, { to: '/factory/grn', label: 'Goods receiving', icon: Truck }, { to: '/factory/purchase-requests', label: 'Purchase requests', icon: ShoppingCart }, { to: '/factory/stock', label: 'Stock ledger', icon: PackageOpen }, { to: '/factory/setup', label: 'Setup', icon: Settings2 }];
   return <div className="min-h-screen bg-slate-100 text-slate-900">
     <header className="bg-slate-950 text-white sticky top-0 z-40 border-b border-white/10">
       <div className="max-w-[1500px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">

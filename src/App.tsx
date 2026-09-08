@@ -13,6 +13,8 @@ const FactoryDashboard = lazy(() => import('./factory/FactoryDashboard'));
 const StockLedger = lazy(() => import('./factory/StockLedger'));
 const FactorySetup = lazy(() => import('./factory/FactorySetup'));
 const GoodsReceiving = lazy(() => import('./factory/GoodsReceiving'));
+const FactoryHome = lazy(() => import('./factory/FactoryHome'));
+const PurchaseRequests = lazy(() => import('./factory/PurchaseRequests'));
 
 function RouteLoading() {
   return (
@@ -39,10 +41,12 @@ export default function App() {
           <Route path="/admin/designs/:id" element={<AdminDesignDetail />} />
           <Route path="/admin/designs/:id/edit" element={<AdminDesignEdit />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
-          <Route path="/factory" element={<FactoryDashboard />} />
+          <Route path="/factory" element={<FactoryHome />} />
+          <Route path="/factory/production" element={<FactoryDashboard />} />
           <Route path="/factory/stock" element={<StockLedger />} />
           <Route path="/factory/setup" element={<FactorySetup />} />
           <Route path="/factory/grn" element={<GoodsReceiving />} />
+          <Route path="/factory/purchase-requests" element={<PurchaseRequests />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
