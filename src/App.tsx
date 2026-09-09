@@ -43,7 +43,6 @@ const ApprovalInbox = lazy(() => import('./factory/ApprovalInbox'));
 const Quotations = lazy(() => import('./factory/QuotationPricing'));
 const QuotationPreparation = lazy(() => import('./factory/QuotationPreparation'));
 const SampleDevelopment = lazy(() => import('./factory/SampleDevelopment'));
-const SampleCosting = lazy(() => import('./factory/SampleCosting'));
 const QuickBooksSync = lazy(() => import('./factory/QuickBooksSync'));
 const QuickBooksExport = lazy(() => import('./factory/QuickBooksExport'));
 
@@ -106,7 +105,6 @@ export default function App() {
           <Route path="/factory/quotations" element={<Quotations />} />
           <Route path="/factory/quotations/preparation" element={<QuotationPreparation />} />
           <Route path="/factory/samples" element={<SampleDevelopment />} />
-          <Route path="/factory/samples/costing" element={<SampleCosting />} />
           <Route path="/factory/quickbooks" element={<QuickBooksSync />} />
           <Route path="/factory/quickbooks/export" element={<QuickBooksExport />} />
         </Routes>

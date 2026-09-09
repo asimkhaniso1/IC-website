@@ -8,7 +8,7 @@ import { COMPANY } from '../lib/constants';
 type NavGroup = { label: string; icon: LucideIcon; items: readonly (readonly [string, string, LucideIcon])[] };
 const groups: NavGroup[] = [
   { label: 'Customers & sales', icon: Users, items: [
-    ['/factory/quotations/preparation', 'Quotation preparation', ClipboardList], ['/factory/quotations', 'Quotations', FileCheck2], ['/factory/samples', 'Sample development', PackageCheck], ['/factory/samples/costing', 'Sample costing', ClipboardList], ['/factory/orders', 'Customer orders', ClipboardList],
+    ['/factory/quotations/preparation', 'Construction & costing', ClipboardList], ['/factory/quotations', 'Quotations', FileCheck2], ['/factory/samples', 'Sample development', PackageCheck], ['/factory/orders', 'Customer orders', ClipboardList],
   ]},
   { label: 'Production', icon: Factory, items: [
     ['/factory/planning', 'Production planning', ClipboardList], ['/factory/production', 'Production entry', Factory], ['/factory/machines', 'Machines', Factory], ['/factory/maintenance', 'Maintenance', Settings2], ['/factory/material-planning', 'Material planning', Boxes], ['/factory/material-issues', 'Material issues', PackageOpen],
