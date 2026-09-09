@@ -1,25 +1,66 @@
-import type { ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { BarChart3, Boxes, ClipboardList, Factory, FileCheck2, History, Home, LogOut, PackageCheck, PackageOpen, Route, Send, Settings2, ShieldCheck, ShoppingCart, Truck } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { BarChart3, Boxes, ChevronDown, ClipboardList, Factory, FileCheck2, History, Home, LogOut, PackageCheck, PackageOpen, Route, Send, Settings2, ShieldCheck, ShoppingCart, Truck, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useSession } from '../auth/useSession';
 import { COMPANY } from '../lib/constants';
 
+type NavGroup = { label: string; icon: LucideIcon; items: readonly (readonly [string, string, LucideIcon])[] };
+const groups: NavGroup[] = [
+  { label: 'Customers & sales', icon: Users, items: [
+    ['/factory/quotations', 'Quotations', FileCheck2], ['/factory/samples', 'Sample development', PackageCheck], ['/factory/orders', 'Customer orders', ClipboardList],
+  ]},
+  { label: 'Production', icon: Factory, items: [
+    ['/factory/planning', 'Production planning', ClipboardList], ['/factory/production', 'Production entry', Factory], ['/factory/machines', 'Machines', Factory], ['/factory/maintenance', 'Maintenance', Settings2], ['/factory/material-planning', 'Material planning', Boxes], ['/factory/material-issues', 'Material issues', PackageOpen],
+  ]},
+  { label: 'Quality', icon: ShieldCheck, items: [
+    ['/factory/qc', 'Quality control', ShieldCheck], ['/factory/qc/analytics', 'Quality analytics', BarChart3],
+  ]},
+  { label: 'Inventory & store', icon: Boxes, items: [
+    ['/factory/grn', 'Goods receiving', Truck], ['/factory/stock', 'Stock ledger', PackageOpen], ['/factory/stock/register', 'Stock register', ClipboardList], ['/factory/stock/adjustments', 'Stock adjustments', Settings2], ['/factory/stock/transfers', 'Stock transfers', Route], ['/factory/stock/take', 'Stock take', ClipboardList], ['/factory/packing', 'Packing & finished', PackageCheck],
+  ]},
+  { label: 'Purchasing', icon: ShoppingCart, items: [
+    ['/factory/approvals', 'Approval inbox', FileCheck2], ['/factory/purchase-requests', 'Purchase requests', ShoppingCart], ['/factory/purchase-orders', 'Purchase orders', ClipboardList],
+  ]},
+  { label: 'Dispatch', icon: Truck, items: [
+    ['/factory/dispatch/schedule', 'Dispatch schedule', Truck], ['/factory/dispatch', 'Dispatch delivery', Send], ['/factory/gate-pass', 'Gate pass', FileCheck2], ['/factory/traceability', 'Traceability', Route],
+  ]},
+  { label: 'Reports & accounts', icon: BarChart3, items: [
+    ['/factory/reports', 'Factory reports', BarChart3], ['/factory/quickbooks', 'QuickBooks sync', Send], ['/factory/audit', 'Audit log', History],
+  ]},
+  { label: 'Master data & admin', icon: Settings2, items: [
+    ['/factory/master/procurement', 'Suppliers & materials', Boxes], ['/factory/master/bom-routings', 'BOM & routings', Route], ['/factory/users', 'Users & roles', ShieldCheck], ['/factory/setup', 'Factory setup', Settings2],
+  ]},
+];
+
 export default function FactoryShell({ children }: { children: ReactNode }) {
   const { session, signOut } = useSession();
-  const nav = [{ to: '/factory', label: 'Home', icon: Home }, { to: '/factory/overview', label: 'Dashboard', icon: BarChart3 }, { to: '/factory/approvals', label: 'Approval inbox', icon: FileCheck2 }, { to: '/factory/quotations', label: 'Quotations', icon: FileCheck2 }, { to: '/factory/samples', label: 'Sample development', icon: PackageCheck }, { to: '/factory/orders', label: 'Orders', icon: ClipboardList }, { to: '/factory/machines', label: 'Machines', icon: Factory }, { to: '/factory/maintenance', label: 'Maintenance', icon: Settings2 }, { to: '/factory/planning', label: 'Production planning', icon: ClipboardList }, { to: '/factory/production', label: 'Production', icon: ClipboardList }, { to: '/factory/material-planning', label: 'Material planning', icon: Boxes }, { to: '/factory/material-issues', label: 'Material issues', icon: PackageOpen }, { to: '/factory/qc', label: 'Quality control', icon: ShieldCheck }, { to: '/factory/qc/analytics', label: 'Quality analytics', icon: BarChart3 }, { to: '/factory/packing', label: 'Packing & finished', icon: PackageCheck }, { to: '/factory/dispatch/schedule', label: 'Dispatch schedule', icon: Truck }, { to: '/factory/dispatch', label: 'Dispatch', icon: Send }, { to: '/factory/traceability', label: 'Traceability', icon: Route }, { to: '/factory/grn', label: 'Goods receiving', icon: Truck }, { to: '/factory/purchase-requests', label: 'Purchase requests', icon: ShoppingCart }, { to: '/factory/purchase-orders', label: 'Purchase orders', icon: ClipboardList }, { to: '/factory/gate-pass', label: 'Gate pass', icon: FileCheck2 }, { to: '/factory/stock', label: 'Stock ledger', icon: PackageOpen }, { to: '/factory/stock/register', label: 'Stock register', icon: ClipboardList }, { to: '/factory/stock/adjustments', label: 'Stock adjustments', icon: Settings2 }, { to: '/factory/stock/transfers', label: 'Stock transfers', icon: Route }, { to: '/factory/stock/take', label: 'Stock take', icon: ClipboardList }, { to: '/factory/master/procurement', label: 'Suppliers & materials', icon: Boxes }, { to: '/factory/master/bom-routings', label: 'BOM & routings', icon: Route }, { to: '/factory/quickbooks', label: 'QuickBooks export', icon: Send }, { to: '/factory/reports', label: 'Reports', icon: BarChart3 }, { to: '/factory/audit', label: 'Audit log', icon: History }, { to: '/factory/users', label: 'Users & roles', icon: ShieldCheck }, { to: '/factory/setup', label: 'Setup', icon: Settings2 }];
-  return <div className="min-h-screen bg-slate-100 text-slate-900">
-    <header className="bg-slate-950 text-white sticky top-0 z-40 border-b border-white/10">
-      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link to="/factory" className="flex items-center gap-3"><img src={COMPANY.logo} alt="" className="h-7"/><div><p className="text-sm font-bold">Factory Live</p><p className="text-[10px] uppercase tracking-[.2em] text-emerald-400">Core transactions</p></div></Link>
-        <div className="flex items-center gap-3"><span className="hidden sm:block text-xs text-slate-400">{session?.user.email}</span><button onClick={() => void signOut()} className="p-2 rounded-lg hover:bg-white/10" title="Sign out"><LogOut className="w-4 h-4"/></button></div>
+  const location = useLocation();
+  const activeGroup = groups.find(g => g.items.some(([to]) => location.pathname === to || location.pathname.startsWith(`${to}/`)))?.label;
+  const [open, setOpen] = useState<Record<string, boolean>>(() => activeGroup ? { [activeGroup]: true } : {});
+  useEffect(() => { if (activeGroup) setOpen(v => ({ ...v, [activeGroup]: true })); }, [activeGroup]);
+
+  return <div className="min-h-screen bg-[#f2f6fb] text-slate-900">
+    <header className="sticky top-0 z-40 bg-gradient-to-r from-[#073b6f] via-[#0a5592] to-[#073b6f] text-white shadow-md">
+      <div className="h-16 px-4 sm:px-6 flex items-center justify-between">
+        <Link to="/factory" className="flex items-center gap-3"><img src={COMPANY.logo} alt="" className="h-7 brightness-0 invert"/><div><p className="text-sm font-bold tracking-wide">INTERCONVERTERS <span className="font-normal text-blue-100">Factory Live</span></p><p className="text-[10px] uppercase tracking-[.18em] text-cyan-300">Manufacturing management system</p></div></Link>
+        <div className="flex items-center gap-3"><div className="hidden sm:block text-right"><p className="text-xs font-semibold">{session?.user.email}</p><p className="text-[10px] text-blue-200">Factory user</p></div><button onClick={() => void signOut()} className="p-2 rounded-lg hover:bg-white/10" title="Sign out"><LogOut className="w-4 h-4"/></button></div>
       </div>
     </header>
-    <div className="max-w-[1500px] mx-auto sm:grid sm:grid-cols-[220px_1fr] min-h-[calc(100vh-4rem)]">
-      <aside className="bg-white border-r border-slate-200 p-3 flex sm:flex-col gap-2 overflow-x-auto">
-        {nav.map(({to,label,icon:Icon}) => <NavLink key={to} to={to} end={to==='/factory'} className={({isActive})=>`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap ${isActive?'bg-brand-50 text-brand-700':'text-slate-600 hover:bg-slate-50'}`}><Icon className="w-4 h-4"/>{label}</NavLink>)}
-        <div className="hidden sm:block mt-auto p-3 rounded-xl bg-slate-50 text-xs text-slate-500"><ClipboardList className="w-4 h-4 mb-2 text-slate-400"/>Phase 1 vertical slice</div>
+    <div className="sm:grid sm:grid-cols-[260px_1fr] min-h-[calc(100vh-4rem)]">
+      <aside className="bg-gradient-to-b from-[#083d70] to-[#062c50] text-white border-r border-blue-950/30 p-3 sm:sticky sm:top-16 sm:h-[calc(100vh-4rem)] overflow-y-auto">
+        <NavLink to="/factory" end className={({isActive})=>`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold mb-1 ${isActive?'bg-blue-500 shadow-md':'hover:bg-white/10'}`}><Home className="w-4 h-4 text-cyan-300"/>Home</NavLink>
+        <NavLink to="/factory/overview" className={({isActive})=>`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold mb-2 ${isActive?'bg-blue-500 shadow-md':'hover:bg-white/10'}`}><BarChart3 className="w-4 h-4 text-emerald-300"/>Operations dashboard</NavLink>
+        <div className="h-px bg-white/10 my-2"/>
+        {groups.map(({label,icon:Icon,items}) => <section key={label} className="mb-1">
+          <button type="button" aria-expanded={!!open[label]} onClick={()=>setOpen(v=>({...v,[label]:!v[label]}))} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold hover:bg-white/10 ${activeGroup===label?'text-white':'text-blue-100'}`}>
+            <Icon className="w-4 h-4 text-cyan-300"/><span className="flex-1 text-left">{label}</span><ChevronDown className={`w-4 h-4 transition-transform ${open[label]?'rotate-180':''}`}/>
+          </button>
+          {open[label]&&<div className="ml-4 pl-3 border-l border-white/15 space-y-1 py-1">{items.map(([to,label,ItemIcon])=><NavLink key={to} to={to} className={({isActive})=>`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs ${isActive?'bg-blue-500 text-white font-bold shadow-sm':'text-blue-100 hover:bg-white/10 hover:text-white'}`}><ItemIcon className="w-3.5 h-3.5"/>{label}</NavLink>)}</div>}
+        </section>)}
+        <div className="mt-6 p-3 border-t border-white/10 text-[10px] text-blue-200"><p className="font-bold text-white">INTERCONVERTERS</p><p className="mt-1">Factory Live · Integrated Control</p></div>
       </aside>
-      <main className="p-4 sm:p-8 min-w-0">{children}</main>
+      <main className="p-4 sm:p-6 lg:p-8 min-w-0">{children}</main>
     </div>
   </div>;
 }
