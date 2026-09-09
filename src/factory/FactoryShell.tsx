@@ -29,7 +29,7 @@ const groups: NavGroup[] = [
     ['/factory/reports', 'Factory reports', BarChart3], ['/factory/quickbooks', 'QuickBooks sync', Send], ['/factory/audit', 'Audit log', History],
   ]},
   { label: 'Master data & admin', icon: Settings2, items: [
-    ['/factory/master/procurement', 'Suppliers & materials', Boxes], ['/factory/master/bom-routings', 'BOM & routings', Route], ['/factory/users', 'Users & roles', ShieldCheck], ['/factory/setup', 'Factory setup', Settings2],
+    ['/factory/master/procurement', 'Suppliers & materials', Boxes], ['/factory/master/bom-routings', 'BOM & routings', Route], ['/factory/users', 'Users & roles', ShieldCheck], ['/factory/setup', 'Factory master data', Settings2],
   ]},
 ];
 
