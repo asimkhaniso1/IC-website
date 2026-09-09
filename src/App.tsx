@@ -40,7 +40,7 @@ const DispatchSchedule = lazy(() => import('./factory/DispatchSchedule'));
 const FactoryUsers = lazy(() => import('./factory/FactoryUsers'));
 const ProcurementMaster = lazy(() => import('./factory/ProcurementMaster'));
 const ApprovalInbox = lazy(() => import('./factory/ApprovalInbox'));
-const Quotations = lazy(() => import('./factory/Quotations'));
+const Quotations = lazy(() => import('./factory/QuotationPricing'));
 const QuotationPreparation = lazy(() => import('./factory/QuotationPreparation'));
 const SampleDevelopment = lazy(() => import('./factory/SampleDevelopment'));
 const SampleCosting = lazy(() => import('./factory/SampleCosting'));
