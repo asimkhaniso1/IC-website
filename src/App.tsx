@@ -42,7 +42,7 @@ const ProcurementMaster = lazy(() => import('./factory/ProcurementMaster'));
 const ApprovalInbox = lazy(() => import('./factory/ApprovalInbox'));
 const Quotations = lazy(() => import('./factory/Quotations'));
 const SampleDevelopment = lazy(() => import('./factory/SampleDevelopment'));
-const QuickBooksExport = lazy(() => import('./factory/QuickBooksExport'));
+const QuickBooksExport = lazy(() => import('./factory/QuickBooksSync'));
 
 function RouteLoading() {
   return (
