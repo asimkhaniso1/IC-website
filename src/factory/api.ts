@@ -74,14 +74,6 @@ export async function completeBatch(batchId: string) {
   return data as string;
 }
 
-export async function listStock() {
-  const { data, error } = await client().from('stock_ledger')
-    .select('stock_ledger_id,transaction_date,quantity,stock_category,ownership,reference_note,product:products(product_code,description),material:materials(material_code,material_name),uom:uoms(uom_code),location:locations(location_name)')
-    .order('transaction_date', { ascending: false }).limit(100);
-  if (error) throw error;
-  return data ?? [];
-}
-
 export async function listSetupData() {
   const supabase = client();
   const [groups, customers, products, operators, machines] = await Promise.all([

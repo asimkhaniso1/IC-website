@@ -11,22 +11,22 @@ const groups: NavGroup[] = [
     ['/factory/quotations/preparation', 'Construction & costing', ClipboardList], ['/factory/quotations', 'Quotations', FileCheck2], ['/factory/samples', 'Sample development', PackageCheck], ['/factory/orders', 'Customer orders', ClipboardList],
   ]},
   { label: 'Production', icon: Factory, items: [
-    ['/factory/planning', 'Production planning', ClipboardList], ['/factory/production', 'Production entry', Factory], ['/factory/machines', 'Machines', Factory], ['/factory/maintenance', 'Maintenance', Settings2], ['/factory/material-planning', 'Material planning', Boxes], ['/factory/material-issues', 'Material issues', PackageOpen],
+    ['/factory/planning', 'Production planning', ClipboardList], ['/factory/production', 'Production entry', Factory], ['/factory/machines', 'Machines', Factory], ['/factory/maintenance', 'Maintenance', Settings2], ['/factory/material-planning', 'Material planning', Boxes], ['/factory/material-issues', 'Company material issues', PackageOpen],
   ]},
   { label: 'Quality', icon: ShieldCheck, items: [
     ['/factory/qc', 'Quality control', ShieldCheck], ['/factory/qc/analytics', 'Quality analytics', BarChart3],
   ]},
   { label: 'Inventory & store', icon: Boxes, items: [
-    ['/factory/grn', 'Goods receiving', Truck], ['/factory/stock/customer-custody', 'Customer material custody', ArrowRightLeft], ['/factory/stock', 'Stock ledger', PackageOpen], ['/factory/stock/register', 'Stock register', ClipboardList], ['/factory/stock/adjustments', 'Stock adjustments', Settings2], ['/factory/stock/transfers', 'Stock transfers', Route], ['/factory/stock/take', 'Stock take', ClipboardList], ['/factory/packing', 'Packing & finished', PackageCheck],
+    ['/factory/grn', 'Supplier / PO receiving', Truck], ['/factory/stock/customer-custody', 'Customer material custody', ArrowRightLeft], ['/factory/stock/register', 'Stock register & ledger', ClipboardList], ['/factory/stock/adjustments', 'Stock adjustments', Settings2], ['/factory/stock/transfers', 'Stock transfers', Route], ['/factory/stock/take', 'Stock take', ClipboardList], ['/factory/packing', 'Company packing & finished', PackageCheck],
   ]},
   { label: 'Purchasing', icon: ShoppingCart, items: [
     ['/factory/approvals', 'Approval inbox', FileCheck2], ['/factory/purchase-requests', 'Purchase requests', ShoppingCart], ['/factory/purchase-orders', 'Purchase orders', ClipboardList],
   ]},
   { label: 'Dispatch', icon: Truck, items: [
-    ['/factory/dispatch/schedule', 'Dispatch schedule', Truck], ['/factory/dispatch', 'Dispatch delivery', Send], ['/factory/gate-pass', 'Gate pass', FileCheck2], ['/factory/traceability', 'Traceability', Route],
+    ['/factory/dispatch/schedule', 'Dispatch schedule', Truck], ['/factory/dispatch', 'Company dispatch', Send], ['/factory/gate-pass', 'Gate pass', FileCheck2], ['/factory/traceability', 'Traceability', Route],
   ]},
   { label: 'Reports & accounts', icon: BarChart3, items: [
-    ['/factory/reports', 'Factory reports', BarChart3], ['/factory/quickbooks', 'QuickBooks sync', Send], ['/factory/quickbooks/export', 'QuickBooks CSV export', ClipboardList], ['/factory/audit', 'Audit log', History],
+    ['/factory/reports', 'Factory reports', BarChart3], ['/factory/quickbooks', 'QuickBooks sync', Send], ['/factory/audit', 'Audit log', History],
   ]},
   { label: 'Master data & admin', icon: Settings2, items: [
     ['/factory/master/procurement', 'Suppliers & materials', Boxes], ['/factory/master/bom-routings', 'BOM & routings', Route], ['/factory/users', 'Users & roles', ShieldCheck], ['/factory/setup', 'Factory setup', Settings2],

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 
 const StudioSelect = lazy(() => import('./pages/StudioSelect'));
@@ -10,7 +10,6 @@ const AdminDesignDetail = lazy(() => import('./pages/admin/AdminDesignDetail'));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminDesignEdit = lazy(() => import('./pages/admin/AdminDesignEdit'));
 const FactoryDashboard = lazy(() => import('./factory/FactoryDashboard'));
-const StockLedger = lazy(() => import('./factory/StockLedger'));
 const FactorySetup = lazy(() => import('./factory/FactorySetup'));
 const GoodsReceiving = lazy(() => import('./factory/GoodsReceiving'));
 const FactoryHome = lazy(() => import('./factory/FactoryHome'));
@@ -74,7 +73,7 @@ export default function App() {
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/factory" element={<FactoryHome />} />
           <Route path="/factory/production" element={<FactoryDashboard />} />
-          <Route path="/factory/stock" element={<StockLedger />} />
+          <Route path="/factory/stock" element={<Navigate to="/factory/stock/register" replace />} />
           <Route path="/factory/setup" element={<FactorySetup />} />
           <Route path="/factory/grn" element={<GoodsReceiving />} />
           <Route path="/factory/purchase-requests" element={<PurchaseRequests />} />
