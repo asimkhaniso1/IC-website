@@ -18,7 +18,7 @@ const FactoryReports = lazy(() => import('./factory/FactoryReports'));
 const GatePass = lazy(() => import('./factory/GatePass'));
 const StockRegister = lazy(() => import('./factory/StockRegister'));
 const AuditLog = lazy(() => import('./factory/AuditLog'));
-const QualityControl = lazy(() => import('./factory/QualityControl'));
+const QualityControl = lazy(() => import('./factory/TextileQualityControl'));
 const Packing = lazy(() => import('./factory/Packing'));
 const Dispatch = lazy(() => import('./factory/Dispatch'));
 const Traceability = lazy(() => import('./factory/Traceability'));

@@ -41,6 +41,10 @@ export default function FactoryShell({ children }: { children: ReactNode }) {
   useEffect(() => { if (activeGroup) setOpen(v => ({ ...v, [activeGroup]: true })); }, [activeGroup]);
 
   return <div className="min-h-screen bg-[#f2f6fb] text-slate-900">
+    <div className="factory-print-header hidden print:flex items-center justify-between border-b-2 border-[#0a5592] pb-3 mb-5">
+      <div className="flex items-center gap-3"><img src={COMPANY.logo} alt="Interconverters" className="h-12 w-auto object-contain"/><div><p className="text-lg font-bold text-[#073b6f]">INTERCONVERTERS PVT. LTD.</p><p className="text-xs uppercase tracking-[.18em] text-slate-500">Factory Live · Controlled Document</p></div></div>
+      <div className="text-right text-[10px] text-slate-500"><p>Generated from Factory Live</p><p>{new Date().toLocaleString()}</p></div>
+    </div>
     <header className="sticky top-0 z-40 bg-gradient-to-r from-[#073b6f] via-[#0a5592] to-[#073b6f] text-white shadow-md">
       <div className="h-16 px-4 sm:px-6 flex items-center justify-between">
         <Link to="/factory" className="flex items-center gap-3"><span className="flex h-10 w-12 items-center justify-center rounded-lg bg-white p-1 shadow-sm"><img src={COMPANY.logo} alt="Interconverters" className="h-8 w-auto object-contain"/></span><div><p className="text-sm font-bold tracking-wide">INTERCONVERTERS <span className="font-normal text-blue-100">Factory Live</span></p><p className="text-[10px] uppercase tracking-[.18em] text-cyan-300">Manufacturing management system</p></div></Link>
