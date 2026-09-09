@@ -3,7 +3,13 @@
 **Purpose of this file:** carry full context into a new chat session or hand off to someone else picking
 up the work. Read this first; it points to everything else.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-09
+
+> Historical planning handover. The implementation has advanced substantially
+> beyond the first vertical slice described below. For current database setup,
+> use [`../../supabase/README.md`](../../supabase/README.md); migrations through
+> `0036` are applied. The consolidated inventory screen is
+> `/factory/stock/register`, backed by the single append-only `stock_ledger`.
 
 ---
 
