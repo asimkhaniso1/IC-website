@@ -43,7 +43,7 @@ export default function FactoryShell({ children }: { children: ReactNode }) {
   return <div className="min-h-screen bg-[#f2f6fb] text-slate-900">
     <header className="sticky top-0 z-40 bg-gradient-to-r from-[#073b6f] via-[#0a5592] to-[#073b6f] text-white shadow-md">
       <div className="h-16 px-4 sm:px-6 flex items-center justify-between">
-        <Link to="/factory" className="flex items-center gap-3"><img src={COMPANY.logo} alt="" className="h-7 brightness-0 invert"/><div><p className="text-sm font-bold tracking-wide">INTERCONVERTERS <span className="font-normal text-blue-100">Factory Live</span></p><p className="text-[10px] uppercase tracking-[.18em] text-cyan-300">Manufacturing management system</p></div></Link>
+        <Link to="/factory" className="flex items-center gap-3"><span className="flex h-10 w-12 items-center justify-center rounded-lg bg-white p-1 shadow-sm"><img src={COMPANY.logo} alt="Interconverters" className="h-8 w-auto object-contain"/></span><div><p className="text-sm font-bold tracking-wide">INTERCONVERTERS <span className="font-normal text-blue-100">Factory Live</span></p><p className="text-[10px] uppercase tracking-[.18em] text-cyan-300">Manufacturing management system</p></div></Link>
         <div className="flex items-center gap-3"><div className="hidden sm:block text-right"><p className="text-xs font-semibold">{session?.user.email}</p><p className="text-[10px] text-blue-200">Factory user</p></div><button onClick={() => void signOut()} className="p-2 rounded-lg hover:bg-white/10" title="Sign out"><LogOut className="w-4 h-4"/></button></div>
       </div>
     </header>
