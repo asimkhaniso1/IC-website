@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Boxes, ChevronDown, ClipboardList, Factory, FileCheck2, History, Home, LogOut, PackageCheck, PackageOpen, Route, Send, Settings2, ShieldCheck, ShoppingCart, Truck, Users } from 'lucide-react';
+import { ArrowRightLeft, BarChart3, Boxes, ChevronDown, ClipboardList, Factory, FileCheck2, History, Home, LogOut, PackageCheck, PackageOpen, Route, Send, Settings2, ShieldCheck, ShoppingCart, Truck, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useSession } from '../auth/useSession';
 import { COMPANY } from '../lib/constants';
@@ -17,7 +17,7 @@ const groups: NavGroup[] = [
     ['/factory/qc', 'Quality control', ShieldCheck], ['/factory/qc/analytics', 'Quality analytics', BarChart3],
   ]},
   { label: 'Inventory & store', icon: Boxes, items: [
-    ['/factory/grn', 'Goods receiving', Truck], ['/factory/stock', 'Stock ledger', PackageOpen], ['/factory/stock/register', 'Stock register', ClipboardList], ['/factory/stock/adjustments', 'Stock adjustments', Settings2], ['/factory/stock/transfers', 'Stock transfers', Route], ['/factory/stock/take', 'Stock take', ClipboardList], ['/factory/packing', 'Packing & finished', PackageCheck],
+    ['/factory/grn', 'Goods receiving', Truck], ['/factory/stock/customer-custody', 'Customer material custody', ArrowRightLeft], ['/factory/stock', 'Stock ledger', PackageOpen], ['/factory/stock/register', 'Stock register', ClipboardList], ['/factory/stock/adjustments', 'Stock adjustments', Settings2], ['/factory/stock/transfers', 'Stock transfers', Route], ['/factory/stock/take', 'Stock take', ClipboardList], ['/factory/packing', 'Packing & finished', PackageCheck],
   ]},
   { label: 'Purchasing', icon: ShoppingCart, items: [
     ['/factory/approvals', 'Approval inbox', FileCheck2], ['/factory/purchase-requests', 'Purchase requests', ShoppingCart], ['/factory/purchase-orders', 'Purchase orders', ClipboardList],

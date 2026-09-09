@@ -45,6 +45,7 @@ const QuotationPreparation = lazy(() => import('./factory/QuotationPreparation')
 const SampleDevelopment = lazy(() => import('./factory/SampleDevelopment'));
 const QuickBooksSync = lazy(() => import('./factory/QuickBooksSync'));
 const QuickBooksExport = lazy(() => import('./factory/QuickBooksExport'));
+const CustomerCustody = lazy(() => import('./factory/CustomerCustody'));
 
 function RouteLoading() {
   return (
@@ -91,6 +92,7 @@ export default function App() {
           <Route path="/factory/overview" element={<OperationsOverview />} />
           <Route path="/factory/stock/adjustments" element={<StockAdjustments />} />
           <Route path="/factory/stock/transfers" element={<StockTransfers />} />
+          <Route path="/factory/stock/customer-custody" element={<CustomerCustody />} />
           <Route path="/factory/stock/take" element={<StockTake />} />
           <Route path="/factory/qc/analytics" element={<QualityAnalytics />} />
           <Route path="/factory/maintenance" element={<Maintenance />} />

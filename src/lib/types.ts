@@ -88,6 +88,17 @@ export interface TechnicalDetails {
   tolerance?: string;
   machineRef?: string;
   finishing?: string;
+  taar?: string;
+  ply?: string;
+  gauge?: string;
+  strips?: string;
+  machineSpeed?: string;
+  rubberWeightGm?: string;
+  yarnWeightGm?: string;
+  rubberPriceKg?: string;
+  yarnPriceKg?: string;
+  conversionPriceKg?: string;
+  costingWastagePct?: string;
   notes?: string;
 }
 
