@@ -26,7 +26,7 @@ const groups: NavGroup[] = [
     ['/factory/dispatch/schedule', 'Dispatch schedule', Truck], ['/factory/dispatch', 'Dispatch delivery', Send], ['/factory/gate-pass', 'Gate pass', FileCheck2], ['/factory/traceability', 'Traceability', Route],
   ]},
   { label: 'Reports & accounts', icon: BarChart3, items: [
-    ['/factory/reports', 'Factory reports', BarChart3], ['/factory/quickbooks', 'QuickBooks sync', Send], ['/factory/audit', 'Audit log', History],
+    ['/factory/reports', 'Factory reports', BarChart3], ['/factory/quickbooks', 'QuickBooks sync', Send], ['/factory/quickbooks/export', 'QuickBooks CSV export', ClipboardList], ['/factory/audit', 'Audit log', History],
   ]},
   { label: 'Master data & admin', icon: Settings2, items: [
     ['/factory/master/procurement', 'Suppliers & materials', Boxes], ['/factory/master/bom-routings', 'BOM & routings', Route], ['/factory/users', 'Users & roles', ShieldCheck], ['/factory/setup', 'Factory setup', Settings2],
@@ -56,7 +56,7 @@ export default function FactoryShell({ children }: { children: ReactNode }) {
           <button type="button" aria-expanded={!!open[label]} onClick={()=>setOpen(v=>({...v,[label]:!v[label]}))} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold hover:bg-white/10 ${activeGroup===label?'text-white':'text-blue-100'}`}>
             <Icon className="w-4 h-4 text-cyan-300"/><span className="flex-1 text-left">{label}</span><ChevronDown className={`w-4 h-4 transition-transform ${open[label]?'rotate-180':''}`}/>
           </button>
-          {open[label]&&<div className="ml-4 pl-3 border-l border-white/15 space-y-1 py-1">{items.map(([to,label,ItemIcon])=><NavLink key={to} to={to} className={({isActive})=>`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs ${isActive?'bg-blue-500 text-white font-bold shadow-sm':'text-blue-100 hover:bg-white/10 hover:text-white'}`}><ItemIcon className="w-3.5 h-3.5"/>{label}</NavLink>)}</div>}
+          {open[label]&&<div className="ml-4 pl-3 border-l border-white/15 space-y-1 py-1">{items.map(([to,label,ItemIcon])=><NavLink key={to} to={to} end className={({isActive})=>`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs ${isActive?'bg-blue-500 text-white font-bold shadow-sm':'text-blue-100 hover:bg-white/10 hover:text-white'}`}><ItemIcon className="w-3.5 h-3.5"/>{label}</NavLink>)}</div>}
         </section>)}
         <div className="mt-6 p-3 border-t border-white/10 text-[10px] text-blue-200"><p className="font-bold text-white">INTERCONVERTERS</p><p className="mt-1">Factory Live · Integrated Control</p></div>
       </aside>
