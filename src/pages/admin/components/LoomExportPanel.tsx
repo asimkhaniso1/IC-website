@@ -35,7 +35,7 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
   const [done, setDone] = useState<PatternGridStatus | null>(null);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [editing, setEditing] = useState(false);
-  const [colorIndex, setColorIndex] = useState(0);
+  const [colorIndex, setColorIndex] = useState(1);
 
   const capabilities = useCapabilities();
   const jacquard = spec.family === 'J' ? spec as JacquardSpec : null;
@@ -94,8 +94,8 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
     finally { setBusy(null); }
   }
 
-  function editCell(event: MouseEvent<HTMLCanvasElement>) {
-    if (!editing || !canvasRef.current || !palette[colorIndex]) return;
+  function editCell(event: MouseEvent<HTMLCanvasElement>, dragging = false) {
+    if (!editing || !canvasRef.current || !palette[colorIndex] || (dragging && event.buttons !== 1)) return;
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const x = Math.min(canvas.width - 1, Math.max(0, Math.floor((event.clientX - rect.left) * canvas.width / rect.width)));
@@ -183,9 +183,15 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
             <span><b className="text-slate-700">{graph.rows}</b> warp ends × <b className="text-slate-700">{graph.cols}</b> weft picks</span>
             {editing && <span>Choose a yarn color, then click cells to edit.</span>}
           </div>
-          {editing && <div className="mb-2 flex flex-wrap gap-1.5">{palette.map((entry, index) => <button key={entry.hex} type="button" onClick={() => setColorIndex(index)} title={`${entry.role}: ${entry.label}`} className={`h-7 w-7 rounded border-2 ${colorIndex === index ? 'border-brand-600 ring-2 ring-brand-200' : 'border-white'}`} style={{ backgroundColor: entry.hex }} />)}</div>}
+          {editing && <div className="mb-2 flex flex-wrap items-center gap-1.5">{palette.map((entry, index) => <button key={entry.hex} type="button" onClick={() => setColorIndex(index)} title={`${entry.role}: ${entry.label}`} aria-label={`Use ${entry.role} color ${entry.label}`} className={`h-8 w-8 rounded border-2 ${colorIndex === index ? 'border-brand-600 ring-2 ring-brand-200' : 'border-white'}`} style={{ backgroundColor: entry.hex }} />)}<span className="ml-2 text-xs font-medium text-slate-600">Painting: {palette[colorIndex]?.role} — {palette[colorIndex]?.label}</span></div>}
           <div className="max-h-96 overflow-auto rounded border border-slate-300 bg-white p-2">
-            <canvas ref={canvasRef} onClick={editCell} className={`mx-auto max-w-full border border-slate-200 [image-rendering:pixelated] ${editing ? 'cursor-crosshair' : ''}`} />
+            <canvas
+              ref={canvasRef}
+              onMouseDown={(event) => editCell(event)}
+              onMouseMove={(event) => editCell(event, true)}
+              className={`mx-auto max-w-none select-none border border-slate-300 [image-rendering:pixelated] ${editing ? 'cursor-crosshair touch-none' : ''}`}
+              style={{ width: `${Math.max(graph.cols, graph.cols * 5)}px`, height: `${Math.max(graph.rows, graph.rows * 5)}px` }}
+            />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" variant="ghost" onClick={() => downloadGraph('png')}><Image className="w-3.5 h-3.5" /> PNG</Button>
