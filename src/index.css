@@ -29,3 +29,13 @@
     text-wrap: balance;
   }
 }
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: white !important; color: #0f172a !important; }
+  header, aside, button, .print\:hidden { display: none !important; }
+  .factory-print-header { display: flex !important; }
+  main { padding: 0 !important; margin: 0 !important; }
+  section, article, table { break-inside: avoid; box-shadow: none !important; }
+  table { width: 100% !important; font-size: 9px !important; }
+  a { color: inherit !important; text-decoration: none !important; }
+}

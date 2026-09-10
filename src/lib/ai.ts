@@ -133,10 +133,12 @@ export async function renderFabricPhoto(previewPng: string, spec: DesignSpec): P
 
 /** Runs the AI manufacturability advisory review (design-level feedback only — not a production approval). */
 export async function analyzeDesignAi(
-  spec: DesignSpec
+  spec: DesignSpec,
+  artworkThumb?: string
 ): Promise<{ level: Feasibility; issues: WeavabilityIssue[]; summary: string }> {
   return postJson<{ level: Feasibility; issues: WeavabilityIssue[]; summary: string }>('/api/ai/analyze', {
     spec,
+    artworkThumb,
   });
 }
 

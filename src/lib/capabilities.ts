@@ -26,6 +26,10 @@ export interface FamilyCapabilities {
   /** Minimum weavable text height (mm) — jacquard weavability rule. */
   minTextHeightMm: number;
   constructions: string[];
+  /** Whether operator-reviewed technical graph generation is available for this family. */
+  technicalGraphEnabled: boolean;
+  /** Software/factory ceiling for end × pick cells in one generated repeat. */
+  maxTechnicalGraphCells: number;
 }
 
 export type CapabilityMap = Record<Family, FamilyCapabilities>;
@@ -41,6 +45,8 @@ function defaultsFor(family: Family): FamilyCapabilities {
     elongation: { min: 10, max: 200 },
     minTextHeightMm: 4,
     constructions: [...CONSTRUCTION_LIBRARY[family]],
+    technicalGraphEnabled: family === 'J',
+    maxTechnicalGraphCells: 16_000_000,
   };
 }
 
@@ -106,6 +112,15 @@ function applyRule(target: FamilyCapabilities, key: string, value: unknown): voi
         const list = value.filter((c): c is string => typeof c === 'string' && c.length > 0);
         if (list.length) target.constructions = list;
       }
+      break;
+    }
+    case 'technical_graph_enabled': {
+      if (typeof value === 'boolean') target.technicalGraphEnabled = value;
+      break;
+    }
+    case 'max_technical_graph_cells': {
+      const n = num(value);
+      if (n !== undefined && n > 0) target.maxTechnicalGraphCells = Math.floor(n);
       break;
     }
     default:

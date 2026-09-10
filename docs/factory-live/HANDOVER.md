@@ -3,18 +3,25 @@
 **Purpose of this file:** carry full context into a new chat session or hand off to someone else picking
 up the work. Read this first; it points to everything else.
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-09
+
+> Historical planning handover. The implementation has advanced substantially
+> beyond the first vertical slice described below. For current database setup,
+> use [`../../supabase/README.md`](../../supabase/README.md); migrations through
+> `0036` are applied. The consolidated inventory screen is
+> `/factory/stock/register`, backed by the single append-only `stock_ledger`.
 
 ---
 
 ## Where things stand, in one paragraph
 
-The **Discovery & Design Pack** for Interconverters Factory Live is complete, all seven originally
-blocking open questions are answered by Interconverters, and the pack is **merged to `main`** on
-`asimkhaniso1/IC-website` (commit `154f09f`). **No application code exists yet** — no `/factory` routes,
-no new database tables, no UI. This is why there is no "Factory" link in the live admin dashboard at
-`interconverters.com/admin` — only planning documents were produced and merged. The next step is Phase 1
-implementation, starting with one vertical slice.
+The **Discovery & Design Pack** for Interconverters Factory Live is complete and all seven originally
+blocking questions are answered. Phase 1 implementation has started with the planned vertical slice:
+database migration `0004_factory_live_core.sql` plus the lazy-loaded `/factory` production workflow and
+`/factory/stock` ledger. The slice supports machine assignment, production entry, calculated meter/kg
+output, batch completion, audit events, and an append-only WIP stock posting. It still needs migration
+application, verified master data, and a real-order reconciliation trial before it meets the Phase 1
+exit criteria.
 
 ---
 
@@ -29,8 +36,9 @@ implementation, starting with one vertical slice.
 | Existing Design Studio (unrelated, unchanged) | `IC-website/src/studio/`, `src/lib/types.ts` (FROZEN), routes `/studio/*`, `/admin/*` |
 | Existing Supabase migrations | `supabase/migrations/0001_init.sql` through `0003_admin_settings.sql` — Studio only, nothing factory-related |
 
-**Not yet built:** `supabase/migrations/0004+`, any `src/factory/` or `src/pages/factory/` tree, any
-`/factory/*` route in `src/App.tsx`, any factory nav entry.
+**Now built locally:** `supabase/migrations/0004_factory_live_core.sql`, `src/factory/`, and lazy-loaded
+routes `/factory` and `/factory/stock` in `src/App.tsx`. The migration has not been applied to a hosted
+Supabase project from this repository session.
 
 ---
 
@@ -77,7 +85,7 @@ table can't hold real rows until it's answered. Ask Production Manager / Mainten
 
 ---
 
-## Next step: Phase 1, the vertical slice
+## Current step: Phase 1, the vertical slice
 
 Per [`10-migration-plan.md`](10-migration-plan.md) §2 — build **one thread end to end** before anything
 else:
@@ -93,6 +101,10 @@ Minimum tables (see [`05-database-schema.md`](05-database-schema.md) for full co
 
 Minimum screens (see [`08-screen-list.md`](08-screen-list.md)): order confirmation, production order
 creation, machine assignment, production entry form, a basic stock ledger view.
+
+**Implemented in the first increment:** machine assignment, production entry, batch completion, and a
+basic stock ledger view. Order/customer/product intake and master-data maintenance still require their
+Phase 1 screens; initial records can be loaded after the real master-data workbook is confirmed.
 
 **Definition of done for the slice:** a supervisor can run one real order through the whole thread on a
 real machine, and the resulting stock balance agrees with what the paper system would have shown.

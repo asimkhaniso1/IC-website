@@ -546,6 +546,17 @@ const TECHNICAL_LABELS: Record<keyof TechnicalDetails, string> = {
   tolerance: 'Tolerance',
   machineRef: 'Machine Reference',
   finishing: 'Finishing',
+  taar: 'Taar',
+  ply: 'Ply',
+  gauge: 'Gauge',
+  strips: 'Strips',
+  machineSpeed: 'Machine Speed',
+  rubberWeightGm: 'Rubber Weight (g/m)',
+  yarnWeightGm: 'Yarn Weight (g/m)',
+  rubberPriceKg: 'Rubber Price / kg',
+  yarnPriceKg: 'Yarn Price / kg',
+  conversionPriceKg: 'Conversion Price / kg',
+  costingWastagePct: 'Costing Wastage (%)',
   notes: 'Notes',
 };
 
@@ -614,7 +625,7 @@ const FEASIBILITY_COLOR: Record<Feasibility, [number, number, number]> = {
 };
 
 function drawWeavability(doc: jsPDF, y: number, weav: WeavabilityResult | undefined): number {
-  y = sectionHeader(doc, y, 'Weavability / Manufacturability Check');
+  y = sectionHeader(doc, y, 'Manufacturability Check');
 
   if (!weav) {
     doc.setFont('helvetica', 'italic');

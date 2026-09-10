@@ -60,7 +60,7 @@ function csvSection(title: string): string {
  * the midpoint of every number found in the string. Returns null only when
  * no usable number is present at all.
  */
-function parsePositive(s: string | undefined): number | null {
+export function parsePositiveDensity(s: string | undefined): number | null {
   if (!s) return null;
   const matches = s.match(/\d+(?:\.\d+)?/g);
   if (!matches || matches.length === 0) return null;
@@ -146,8 +146,8 @@ export function buildLoomDataCsv(
   }
   if (productionSpec.details.notes?.trim()) csv += csvRow('Notes', productionSpec.details.notes.trim());
 
-  const endsPerCm = parsePositive(productionSpec.details.endsPerCm);
-  const picksPerCm = parsePositive(productionSpec.details.picksPerCm);
+  const endsPerCm = parsePositiveDensity(productionSpec.details.endsPerCm);
+  const picksPerCm = parsePositiveDensity(productionSpec.details.picksPerCm);
   if (endsPerCm || picksPerCm) {
     csv += csvSection('COMPUTED LOOM DATA');
     if (endsPerCm) csv += csvRow('Ends across width', String(Math.round((spec.widthMm / 10) * endsPerCm)));
@@ -333,7 +333,7 @@ function quantizeToPalette(canvas: HTMLCanvasElement, palette: PaletteEntry[]): 
  * layout: bottom-up row order, BGR pixel order, rows padded to 4 bytes.
  * Transparent pixels are composited onto white — BMP-24 has no alpha channel.
  */
-function canvasToBmpBlob(canvas: HTMLCanvasElement): Blob {
+export function canvasToBmpBlob(canvas: HTMLCanvasElement): Blob {
   const w = canvas.width;
   const h = canvas.height;
   const ctx = canvas.getContext('2d');
@@ -446,15 +446,45 @@ export function buildColorKeyCsv(palette: PaletteEntry[]): string {
 // Package + download
 // ---------------------------------------------------------------------------
 
-function dataUrlToBase64(dataUrl: string): string {
-  const idx = dataUrl.indexOf(',');
-  return idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
+function dataUrlToBlob(dataUrl: string): Blob {
+  const headerEnd = dataUrl.indexOf(',');
+  const header = dataUrl.slice(0, headerEnd);
+  const mime = header.match(/data:([^;]+)/)?.[1] ?? 'application/octet-stream';
+  const bytes = Uint8Array.from(atob(dataUrl.slice(headerEnd + 1)), (char) => char.charCodeAt(0));
+  return new Blob([bytes], { type: mime });
+}
+
+async function sha256(blob: Blob): Promise<string> {
+  if (!globalThis.crypto?.subtle) return 'unavailable';
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function buildValidationChecklistCsv(meta: { designCode: string; revisionNo: number; preparedBy: string }): string {
+  let csv = csvSection('JACQUARD OPERATOR / CAD VALIDATION');
+  csv += csvRow('Design', meta.designCode);
+  csv += csvRow('Revision', revisionLabel(meta.revisionNo));
+  csv += csvRow('Prepared By', meta.preparedBy);
+  csv += csvRow('Validation Status', 'PENDING');
+  csv += '\nCheck,Result (Pass/Fail),Notes\n';
+  for (const check of [
+    'Pattern-grid PNG opens and dimensions match manifest',
+    'Pattern-grid BMP imports into the actual CAD/controller',
+    'Warp-end and weft-pick orientation confirmed',
+    'Yarn/color sequence matches color-key.csv',
+    'Repeat joins correctly without unintended gap or overlap',
+    'Test weave matches approved artwork and finished width',
+    'Operator/CAD approval recorded',
+  ]) csv += `${csvEscape(check)},,\n`;
+  csv += '\nOperator Name,,\nCAD / Controller,,\nMachine / Loom,,\nValidation Date,,\nFinal Decision,,\nSignature / Reference,,\n';
+  return csv;
 }
 
 export interface BuildLoomExportOptions {
   spec: DesignSpec;
   productionSpec: ProductionSpec | null;
   meta: { designCode: string; revisionNo: number; preparedBy: string };
+  patternGridOverride?: { dataGridPng: string; previewPng: string; gridBmp: Blob };
 }
 
 export interface PatternGridStatus {
@@ -482,14 +512,52 @@ export async function buildLoomExportZip(
     if (j.artwork.length === 0) {
       patternGrid = { included: false, reason: 'no-artwork' };
     } else {
-      const endsPerCm = parsePositive(productionSpec.details.endsPerCm);
-      const picksPerCm = parsePositive(productionSpec.details.picksPerCm);
+      const endsPerCm = parsePositiveDensity(productionSpec.details.endsPerCm);
+      const picksPerCm = parsePositiveDensity(productionSpec.details.picksPerCm);
       if (endsPerCm && picksPerCm) {
-        const { dataGridPng, previewPng, gridBmp } = await buildPatternGridPngs(j, endsPerCm, picksPerCm);
-        zip.file('pattern-grid.png', dataUrlToBase64(dataGridPng), { base64: true });
+        const { dataGridPng, previewPng, gridBmp } = opts.patternGridOverride
+          ?? await buildPatternGridPngs(j, endsPerCm, picksPerCm);
+        const gridPng = dataUrlToBlob(dataGridPng);
+        const preview = dataUrlToBlob(previewPng);
+        zip.file('pattern-grid.png', gridPng);
         zip.file('pattern-grid.bmp', gridBmp);
-        zip.file('pattern-grid-preview.png', dataUrlToBase64(previewPng), { base64: true });
+        zip.file('pattern-grid-preview.png', preview);
         zip.file('color-key.csv', buildColorKeyCsv(buildJacquardPalette(j)));
+        zip.file('operator-cad-validation.csv', buildValidationChecklistCsv(meta));
+
+        const cols = Math.max(1, Math.round((j.repeat.lengthMm / 10) * picksPerCm));
+        const rows = Math.max(1, Math.round((j.widthMm / 10) * endsPerCm));
+        zip.file('technical-graph-manifest.json', JSON.stringify({
+          schemaVersion: 1,
+          status: 'PENDING_OPERATOR_CAD_VALIDATION',
+          designCode: meta.designCode,
+          revision: revisionLabel(meta.revisionNo),
+          generatedAt: new Date().toISOString(),
+          preparedBy: meta.preparedBy,
+          productionSpecification: {
+            id: productionSpec.id,
+            status: productionSpec.status,
+            updatedAt: productionSpec.updatedAt,
+            constructionType: productionSpec.details.constructionType,
+          },
+          graph: {
+            columns: cols,
+            columnAxis: 'weft-picks',
+            rows,
+            rowAxis: 'warp-ends',
+            endsPerCm,
+            picksPerCm,
+            finishedWidthMm: j.widthMm,
+            repeatLengthMm: j.repeat.lengthMm,
+            repeatSpacingMm: j.repeat.spacingMm,
+          },
+          palette: buildJacquardPalette(j),
+          files: {
+            'pattern-grid.png': { bytes: gridPng.size, sha256: await sha256(gridPng) },
+            'pattern-grid.bmp': { bytes: gridBmp.size, sha256: await sha256(gridBmp) },
+            'pattern-grid-preview.png': { bytes: preview.size, sha256: await sha256(preview) },
+          },
+        }, null, 2));
         patternGrid = { included: true };
       } else {
         patternGrid = { included: false, reason: 'no-density' };

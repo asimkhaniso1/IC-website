@@ -8,6 +8,7 @@ coverage/
 !.env.example
 .vercel
 .env*.local
+tmp/
 
 # Hero video working media (~150 MB of generated clips and keyframe stills); regenerate from
 # docs/hero-video/01-storyboard-and-credit-plan.md. Shipped files live in public/video/.

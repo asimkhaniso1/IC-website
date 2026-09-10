@@ -1,4 +1,4 @@
-# Supabase setup — Design Studio
+# Supabase setup — Design Studio and Factory Live
 
 ## 1. Create the project
 
@@ -11,13 +11,23 @@ The app runs fully offline (localStorage drafts) until these are set.
 
 ## 2. Apply the migrations
 
-SQL Editor → paste `migrations/0001_init.sql` → run, then paste
-`migrations/0002_production_specs.sql` → run (in that order — 0002
-references tables created by 0001). Or with the CLI:
+Apply every numbered file in `migrations/` in ascending order. The migrations
+are cumulative and later files reference objects created by earlier files.
+The current sequence is `0001_init.sql` through
+`0036_auto_queue_quickbooks_documents.sql`.
+
+In the Supabase SQL Editor, paste and run one complete file at a time. Existing
+projects should start with the first migration they have not already applied.
+For this production project, migrations through `0036` have been applied.
+Alternatively, with a linked Supabase CLI project:
 
 ```bash
 supabase db push
 ```
+
+The first migrations establish the Design Studio. Migration `0004` onward adds
+Factory Live, including production, quality, purchasing, the append-only stock
+ledger, customer material custody, costing, and QuickBooks synchronization.
 
 `0002_production_specs.sql` adds two tables:
 

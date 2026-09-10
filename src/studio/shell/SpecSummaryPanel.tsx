@@ -174,7 +174,7 @@ export function SpecSummaryPanel({
       <Panel
         title={
           <span className="flex items-center gap-1">
-            Weavability <Tooltip text="A rule-based, non-binding read on manufacturability. Final review is always performed by our technical team." />
+            {spec.family === 'K' ? 'Knittability' : 'Weavability'} <Tooltip text="A rule-based, non-binding read on manufacturability. Final review is always performed by our technical team." />
           </span>
         }
       >
