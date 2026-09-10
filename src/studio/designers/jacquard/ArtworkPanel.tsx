@@ -30,8 +30,8 @@ async function renderPdfFirstPage(file: File): Promise<string> {
   const pdfjs = await import('pdfjs-dist');
   const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-  const document = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const page = await document.getPage(1);
+  const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const page = await pdfDocument.getPage(1);
   const initial = page.getViewport({ scale: 1 });
   const scale = Math.min(3, 1600 / Math.max(initial.width, initial.height));
   const viewport = page.getViewport({ scale });
