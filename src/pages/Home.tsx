@@ -108,13 +108,28 @@ const HeroSlider = () => {
     return () => clearInterval(timer);
   }, [showVideo, slides.length]);
 
-  // React doesn't reliably set the `muted` attribute, which iOS needs for autoplay. If
-  // playback is blocked (e.g. Low Power Mode), fall back to the image slider.
+  // React doesn't reliably set the `muted` attribute, which iOS needs for autoplay.
+  // NotAllowedError = autoplay blocked (e.g. iOS Low Power Mode) → fall back to the image slider.
+  // AbortError = play was interrupted (e.g. Chrome pauses video-only media in a hidden tab to
+  // save power) → not a failure; retry when the tab becomes visible.
   useEffect(() => {
     const video = videoRef.current;
     if (!showVideo || !video) return;
+    let cancelled = false;
     video.muted = true;
-    video.play().catch(() => setVideoFailed(true));
+    const tryPlay = () =>
+      video.play().catch((err: DOMException) => {
+        if (!cancelled && err.name === 'NotAllowedError') setVideoFailed(true);
+      });
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && video.paused) tryPlay();
+    };
+    tryPlay();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [showVideo, isMobile]);
 
   const syncSlideToVideo = () => {

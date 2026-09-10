@@ -447,6 +447,14 @@ stats, gradient and 60% opacity are untouched.
 Found and fixed during verification: file choice was made once at mount, so a page first loaded
 narrow kept the soft mobile file after widening. Now handled by the breakpoint listener.
 
+**Post-deploy fix (found checking production):** the first release treated *any* `play()`
+rejection as "autoplay blocked" and switched permanently to the image slider. In a hidden tab,
+Chrome rejects with `AbortError` ("video-only background media was paused to save power"), so
+visitors who opened the site in a background tab never got the video, even after switching to
+it. Now only `NotAllowedError` (autoplay genuinely blocked, e.g. iOS Low Power Mode) falls back;
+`AbortError` is ignored and `play()` is retried on `visibilitychange` → visible. Rejections
+from a replaced (breakpoint-swapped) `<video>` are also ignored.
+
 Console: one React warning ("final argument passed to useEffect changed size … `[true]` →
 `[true, false]`"). It was the hot-reload swap of the edited effect, whose deps went from 1 to 2
 while the page was mounted. It didn't recur across three further full reloads (count stayed at
