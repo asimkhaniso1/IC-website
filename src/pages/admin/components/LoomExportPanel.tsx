@@ -7,9 +7,11 @@ import {
   downloadBlob, LoomExportError, parsePositiveDensity, type PatternGridStatus,
 } from '../../../lib/loomExport';
 import { revisionLabel } from '../../../lib/ids';
+import { useCapabilities } from '../../../lib/capabilities';
 import type { DesignSpec, JacquardSpec, ProductionSpec } from '../../../lib/types';
+import { checkWeavability } from '../../../studio/weavability/rules';
 
-type Graph = { dataGridPng: string; cols: number; rows: number };
+type Graph = { dataGridPng: string; cols: number; rows: number; sourceKey: string };
 
 function dataUrlBlob(dataUrl: string): Blob {
   const [header, body] = dataUrl.split(',');
@@ -35,12 +37,28 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
   const [editing, setEditing] = useState(false);
   const [colorIndex, setColorIndex] = useState(0);
 
+  const capabilities = useCapabilities();
   const jacquard = spec.family === 'J' ? spec as JacquardSpec : null;
   const approved = productionSpec?.status === 'approved';
   const endsPerCm = parsePositiveDensity(productionSpec?.details.endsPerCm);
   const picksPerCm = parsePositiveDensity(productionSpec?.details.picksPerCm);
   const palette = jacquard ? buildJacquardPalette(jacquard) : [];
-  const canGenerate = Boolean(jacquard && approved && jacquard.artwork.length && endsPerCm && picksPerCm);
+  const capabilityReview = checkWeavability(spec, capabilities[spec.family]);
+  const construction = productionSpec?.details.constructionType?.trim() ?? '';
+  const constructionKey = construction.startsWith('Other') ? 'Other' : construction;
+  const constructionAllowed = !construction || capabilities[spec.family].constructions.includes(constructionKey);
+  const capabilityBlocks = [
+    ...capabilityReview.issues.filter((issue) => issue.severity === 'error').map((issue) => issue.message),
+    ...(!constructionAllowed ? [`Construction “${construction}” is not in the active ${spec.family} capability library.`] : []),
+  ];
+  const capabilityWarnings = capabilityReview.issues.filter((issue) => issue.severity !== 'error');
+  const capabilityCompliant = capabilityBlocks.length === 0;
+  const graphSpecKey = jacquard
+    ? { ...jacquard, artwork: jacquard.artwork.map((item) => ({ ...item, dataUrl: item.dataUrl ? `${item.dataUrl.slice(0, 80)}:${item.dataUrl.length}` : undefined })) }
+    : { family: spec.family };
+  const graphSourceKey = JSON.stringify({ spec: graphSpecKey, production: productionSpec?.details, capability: capabilities[spec.family] });
+  const graphCurrent = graph?.sourceKey === graphSourceKey;
+  const canGenerate = Boolean(jacquard && approved && jacquard.artwork.length && endsPerCm && picksPerCm && capabilityCompliant);
 
   useEffect(() => {
     if (!graph || !canvasRef.current) return;
@@ -61,7 +79,7 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
     setBusy('generate'); setError(null); setDone(null);
     try {
       const result = await buildPatternGridPngs(jacquard, endsPerCm, picksPerCm);
-      setGraph({ dataGridPng: result.dataGridPng, cols: result.cols, rows: result.rows });
+      setGraph({ dataGridPng: result.dataGridPng, cols: result.cols, rows: result.rows, sourceKey: graphSourceKey });
       setEditing(false);
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not generate the technical graph.'); }
     finally { setBusy(null); }
@@ -127,11 +145,21 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
           <p className="text-sm font-bold text-slate-800">Jacquard Technical Graph <Badge tone="brand">Phase 1</Badge></p>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">Converts approved artwork and production densities into a discrete warp-end × weft-pick graph. Each cell is one declared yarn color.</p>
         </div>
+        <div className={`rounded-lg border px-3 py-2.5 ${capabilityCompliant ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+          <div className="flex items-center justify-between gap-2">
+            <p className={`text-xs font-bold ${capabilityCompliant ? 'text-green-700' : 'text-red-700'}`}>Manufacturing Capability Library</p>
+            <Badge tone={capabilityCompliant ? 'green' : 'red'}>{capabilityCompliant ? 'Within capability' : 'Blocked'}</Badge>
+          </div>
+          {capabilityBlocks.map((message) => <p key={message} className="mt-1 text-xs text-red-700">{message}</p>)}
+          {capabilityWarnings.map((issue) => <p key={`${issue.code}-${issue.message}`} className="mt-1 text-xs text-amber-700">{issue.message}</p>)}
+          {capabilityCompliant && capabilityWarnings.length === 0 && <p className="mt-1 text-xs text-green-700">Width, colors, elongation, text size and construction comply with the active Jacquard rules.</p>}
+        </div>
         {!jacquard && <p className="text-xs text-slate-500">Technical graph generation is currently available for Jacquard designs only.</p>}
         {jacquard && !approved && <p className="text-xs font-medium text-amber-600">Approve the Production Specification before generating a graph.</p>}
         {approved && (!endsPerCm || !picksPerCm) && <p className="text-xs font-medium text-amber-600">Enter Ends/cm and Picks/cm in the approved specification.</p>}
         {approved && jacquard?.artwork.length === 0 && <p className="text-xs font-medium text-amber-600">Add artwork before generating a graph.</p>}
         {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+        {graph && !graphCurrent && <p className="text-xs font-medium text-amber-600">The design, approved specification, or capability rules changed. Regenerate the graph before export.</p>}
 
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" onClick={() => void generate()} disabled={!canGenerate || busy !== null}>
@@ -158,7 +186,7 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
         </div>}
 
         <Tooltip text="Downloads the approved specification, color key and current edited Jacquard graph as one portable package.">
-          <Button size="sm" variant="primary" onClick={() => void handleExport()} disabled={!approved || !graph || busy !== null}>
+          <Button size="sm" variant="primary" onClick={() => void handleExport()} disabled={!approved || !graph || !graphCurrent || !capabilityCompliant || busy !== null}>
             {busy === 'export' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Include in Loom / CAD Package
           </Button>
         </Tooltip>
