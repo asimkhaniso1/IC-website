@@ -446,9 +446,38 @@ export function buildColorKeyCsv(palette: PaletteEntry[]): string {
 // Package + download
 // ---------------------------------------------------------------------------
 
-function dataUrlToBase64(dataUrl: string): string {
-  const idx = dataUrl.indexOf(',');
-  return idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
+function dataUrlToBlob(dataUrl: string): Blob {
+  const headerEnd = dataUrl.indexOf(',');
+  const header = dataUrl.slice(0, headerEnd);
+  const mime = header.match(/data:([^;]+)/)?.[1] ?? 'application/octet-stream';
+  const bytes = Uint8Array.from(atob(dataUrl.slice(headerEnd + 1)), (char) => char.charCodeAt(0));
+  return new Blob([bytes], { type: mime });
+}
+
+async function sha256(blob: Blob): Promise<string> {
+  if (!globalThis.crypto?.subtle) return 'unavailable';
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function buildValidationChecklistCsv(meta: { designCode: string; revisionNo: number; preparedBy: string }): string {
+  let csv = csvSection('JACQUARD OPERATOR / CAD VALIDATION');
+  csv += csvRow('Design', meta.designCode);
+  csv += csvRow('Revision', revisionLabel(meta.revisionNo));
+  csv += csvRow('Prepared By', meta.preparedBy);
+  csv += csvRow('Validation Status', 'PENDING');
+  csv += '\nCheck,Result (Pass/Fail),Notes\n';
+  for (const check of [
+    'Pattern-grid PNG opens and dimensions match manifest',
+    'Pattern-grid BMP imports into the actual CAD/controller',
+    'Warp-end and weft-pick orientation confirmed',
+    'Yarn/color sequence matches color-key.csv',
+    'Repeat joins correctly without unintended gap or overlap',
+    'Test weave matches approved artwork and finished width',
+    'Operator/CAD approval recorded',
+  ]) csv += `${csvEscape(check)},,\n`;
+  csv += '\nOperator Name,,\nCAD / Controller,,\nMachine / Loom,,\nValidation Date,,\nFinal Decision,,\nSignature / Reference,,\n';
+  return csv;
 }
 
 export interface BuildLoomExportOptions {
@@ -488,10 +517,47 @@ export async function buildLoomExportZip(
       if (endsPerCm && picksPerCm) {
         const { dataGridPng, previewPng, gridBmp } = opts.patternGridOverride
           ?? await buildPatternGridPngs(j, endsPerCm, picksPerCm);
-        zip.file('pattern-grid.png', dataUrlToBase64(dataGridPng), { base64: true });
+        const gridPng = dataUrlToBlob(dataGridPng);
+        const preview = dataUrlToBlob(previewPng);
+        zip.file('pattern-grid.png', gridPng);
         zip.file('pattern-grid.bmp', gridBmp);
-        zip.file('pattern-grid-preview.png', dataUrlToBase64(previewPng), { base64: true });
+        zip.file('pattern-grid-preview.png', preview);
         zip.file('color-key.csv', buildColorKeyCsv(buildJacquardPalette(j)));
+        zip.file('operator-cad-validation.csv', buildValidationChecklistCsv(meta));
+
+        const cols = Math.max(1, Math.round((j.repeat.lengthMm / 10) * picksPerCm));
+        const rows = Math.max(1, Math.round((j.widthMm / 10) * endsPerCm));
+        zip.file('technical-graph-manifest.json', JSON.stringify({
+          schemaVersion: 1,
+          status: 'PENDING_OPERATOR_CAD_VALIDATION',
+          designCode: meta.designCode,
+          revision: revisionLabel(meta.revisionNo),
+          generatedAt: new Date().toISOString(),
+          preparedBy: meta.preparedBy,
+          productionSpecification: {
+            id: productionSpec.id,
+            status: productionSpec.status,
+            updatedAt: productionSpec.updatedAt,
+            constructionType: productionSpec.details.constructionType,
+          },
+          graph: {
+            columns: cols,
+            columnAxis: 'weft-picks',
+            rows,
+            rowAxis: 'warp-ends',
+            endsPerCm,
+            picksPerCm,
+            finishedWidthMm: j.widthMm,
+            repeatLengthMm: j.repeat.lengthMm,
+            repeatSpacingMm: j.repeat.spacingMm,
+          },
+          palette: buildJacquardPalette(j),
+          files: {
+            'pattern-grid.png': { bytes: gridPng.size, sha256: await sha256(gridPng) },
+            'pattern-grid.bmp': { bytes: gridBmp.size, sha256: await sha256(gridBmp) },
+            'pattern-grid-preview.png': { bytes: preview.size, sha256: await sha256(preview) },
+          },
+        }, null, 2));
         patternGrid = { included: true };
       } else {
         patternGrid = { included: false, reason: 'no-density' };

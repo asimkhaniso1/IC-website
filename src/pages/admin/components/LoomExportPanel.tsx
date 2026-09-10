@@ -263,6 +263,7 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
             {busy === 'export' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Include in Loom / CAD Package
           </Button>
         </Tooltip>
+        {graph && <p className="text-[11px] leading-relaxed text-slate-500">Package includes the graph PNG/BMP, enlarged preview, color key, production data, checksum manifest, and operator/CAD validation checklist. Status remains pending until the loom/CAD operator signs off the test import and sample weave.</p>}
         {done && <p className={`text-xs font-medium ${done.included ? 'text-green-600' : 'text-amber-600'}`}><CheckCircle2 className="mr-1 inline w-3.5 h-3.5" />Downloaded — {patternGridMessage(done)}</p>}
         <span><Badge tone="slate">Operator/CAD validation required</Badge></span>
       </div>
