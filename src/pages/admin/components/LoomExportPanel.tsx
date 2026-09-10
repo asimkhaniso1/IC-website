@@ -44,20 +44,29 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
   const picksPerCm = parsePositiveDensity(productionSpec?.details.picksPerCm);
   const palette = jacquard ? buildJacquardPalette(jacquard) : [];
   const capabilityReview = checkWeavability(spec, capabilities[spec.family]);
+  const familyCapability = capabilities[spec.family];
   const construction = productionSpec?.details.constructionType?.trim() ?? '';
   const constructionKey = construction.startsWith('Other') ? 'Other' : construction;
   const constructionAllowed = !construction || capabilities[spec.family].constructions.includes(constructionKey);
   const capabilityBlocks = [
     ...capabilityReview.issues.filter((issue) => issue.severity === 'error').map((issue) => issue.message),
     ...(!constructionAllowed ? [`Construction “${construction}” is not in the active ${spec.family} capability library.`] : []),
+    ...(!familyCapability.technicalGraphEnabled ? ['Technical graph generation is disabled in the active capability library.'] : []),
   ];
   const capabilityWarnings = capabilityReview.issues.filter((issue) => issue.severity !== 'error');
-  const capabilityCompliant = capabilityBlocks.length === 0;
   const graphSpecKey = jacquard
     ? { ...jacquard, artwork: jacquard.artwork.map((item) => ({ ...item, dataUrl: item.dataUrl ? `${item.dataUrl.slice(0, 80)}:${item.dataUrl.length}` : undefined })) }
     : { family: spec.family };
   const graphSourceKey = JSON.stringify({ spec: graphSpecKey, production: productionSpec?.details, capability: capabilities[spec.family] });
   const graphCurrent = graph?.sourceKey === graphSourceKey;
+  const computedGraphCells = jacquard && endsPerCm && picksPerCm
+    ? Math.max(1, Math.round((jacquard.widthMm / 10) * endsPerCm))
+      * Math.max(1, Math.round((jacquard.repeat.lengthMm / 10) * picksPerCm))
+    : 0;
+  if (computedGraphCells > familyCapability.maxTechnicalGraphCells) {
+    capabilityBlocks.push(`The graph requires ${computedGraphCells.toLocaleString()} cells, above the capability-library limit of ${familyCapability.maxTechnicalGraphCells.toLocaleString()}.`);
+  }
+  const capabilityCompliant = capabilityBlocks.length === 0;
   const canGenerate = Boolean(jacquard && approved && jacquard.artwork.length && endsPerCm && picksPerCm && capabilityCompliant);
 
   useEffect(() => {
