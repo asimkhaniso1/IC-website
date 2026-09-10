@@ -27,8 +27,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 async function renderPdfFirstPage(file: File): Promise<string> {
-  const pdfjs = await import('pdfjs-dist');
-  const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  // Use PDF.js' compatibility build because artwork PDFs commonly come from
+  // Illustrator and can contain older operators that the modern bundle does
+  // not handle consistently across deployed browsers.
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const worker = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
   const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const page = await pdfDocument.getPage(1);
@@ -164,8 +167,11 @@ export function ArtworkPanel({
       dataUrl = file.type === 'application/pdf'
         ? await renderPdfFirstPage(file)
         : await readFileAsDataUrl(file);
-    } catch {
-      setError('Could not read this PDF. Check that it is not password protected or damaged.');
+    } catch (error) {
+      const reason = error instanceof Error && error.message
+        ? ` (${error.message})`
+        : '';
+      setError(`Could not read this PDF${reason}. Check that it is not password protected or damaged.`);
       return;
     }
     if (file.type === 'image/png' || file.type === 'image/jpeg' || file.type === 'application/pdf') {
