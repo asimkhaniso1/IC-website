@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Shield,
   Settings,
@@ -32,17 +32,41 @@ const COLORS = {
 
 // --- Components ---
 
+// Hero video (docs/hero-video): 6 shots × 5 s, one per slide, so slide = floor(currentTime / 5).
+const HERO_SHOT_SECONDS = 5;
+const HERO_MOBILE_QUERY = '(max-width: 767px)';
+
+/** Autoplaying background video, unless the visitor asked for less motion or less data. */
+const prefersHeroVideo = () => {
+  if (typeof window === 'undefined') return false;
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+  return !reduceMotion && !saveData;
+};
+
 const HeroSlider = () => {
+  // Order follows the hero video's story; copy unchanged. Images are the fallback when the
+  // video is off (reduced motion / Save-Data) or can't play.
   const slides = [
+    {
+      image: '/images/4.jpg',
+      title: 'Quality Material Selection',
+      subtitle: 'Cotton, Polyester, Aramid and other special yarns.'
+    },
+    {
+      image: '/images/5.jpg',
+      title: 'Jacquard Weaving',
+      subtitle: 'Exquisite custom patterns and branding woven directly into high-quality elastic.'
+    },
     {
       image: '/images/1.jpg',
       title: 'Precision Weaving',
       subtitle: 'Ultra-modern production facilities for individual textile solutions.'
     },
     {
-      image: '/images/5.jpg',
-      title: 'Jacquard Weaving',
-      subtitle: 'Exquisite custom patterns and branding woven directly into high-quality elastic.'
+      image: '/images/3.jpg',
+      title: 'High-Tech Narrow Textiles',
+      subtitle: 'Engineering excellence for extreme requirements.'
     },
     {
       image: '/images/a-2-crochet-machine-500x500.jpg',
@@ -53,48 +77,109 @@ const HeroSlider = () => {
       image: '/images/2.jpg',
       title: 'Premium Tapes & Braids',
       subtitle: 'Woven, elastic, and non-elastic solutions for global industries.'
-    },
-    {
-      image: '/images/3.jpg',
-      title: 'High-Tech Narrow Textiles',
-      subtitle: 'Engineering excellence for extreme requirements.'
-    },
-    {
-      image: '/images/4.jpg',
-      title: 'Quality Material Selection',
-      subtitle: 'Cotton, Polyester, Aramid and other special yarns.'
     }
   ];
 
   const [current, setCurrent] = useState(0);
+  const [videoEnabled] = useState(prefersHeroVideo);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia?.(HERO_MOBILE_QUERY).matches
+  );
 
+  // Swap files if the viewport crosses the breakpoint (rotation, window resize). The <video>
+  // is keyed on isMobile, so it remounts and loads the matching file.
   useEffect(() => {
+    const mq = window.matchMedia?.(HERO_MOBILE_QUERY);
+    if (!mq) return;
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const showVideo = videoEnabled && !videoFailed;
+
+  // Image fallback keeps the original 5 s timer; with video, the video clock drives the slides.
+  useEffect(() => {
+    if (showVideo) return;
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [showVideo, slides.length]);
+
+  // React doesn't reliably set the `muted` attribute, which iOS needs for autoplay. If
+  // playback is blocked (e.g. Low Power Mode), fall back to the image slider.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!showVideo || !video) return;
+    video.muted = true;
+    video.play().catch(() => setVideoFailed(true));
+  }, [showVideo, isMobile]);
+
+  const syncSlideToVideo = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    setCurrent(Math.min(slides.length - 1, Math.floor(video.currentTime / HERO_SHOT_SECONDS)));
+  };
+
+  const goToSlide = (i: number) => {
+    setCurrent(i);
+    if (showVideo && videoRef.current) videoRef.current.currentTime = i * HERO_SHOT_SECONDS;
+  };
 
   return (
     <section id="home" className="relative h-screen flex items-center overflow-hidden bg-slate-900">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={current}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.5 }}
-          className="absolute inset-0 z-0"
-        >
-          <img
-            src={slides[current].image}
-            alt="Textile Manufacturing"
-            className="w-full h-full object-cover opacity-60"
-            referrerPolicy="no-referrer"
-          />
+      {showVideo ? (
+        <div className="absolute inset-0 z-0">
+          {/* Mobile file is pre-cropped to the subject; the desktop file keeps the subject at ~72% on narrower screens. */}
+          <video
+            key={isMobile ? 'mobile' : 'desktop'}
+            ref={videoRef}
+            className="w-full h-full object-cover object-[72%_50%] opacity-60"
+            poster={isMobile ? '/video/hero-poster-mobile.webp' : '/video/hero-poster.webp'}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-hidden="true"
+            onTimeUpdate={syncSlideToVideo}
+            // After a breakpoint swap, resume at the current slide instead of restarting at shot 1.
+            onLoadedMetadata={(e) => { e.currentTarget.currentTime = current * HERO_SHOT_SECONDS; }}
+            onError={() => setVideoFailed(true)}
+          >
+            {isMobile ? (
+              <source src="/video/hero-mobile.mp4" type="video/mp4" onError={() => setVideoFailed(true)} />
+            ) : (
+              <>
+                <source src="/video/hero-desktop.webm" type="video/webm" />
+                <source src="/video/hero-desktop.mp4" type="video/mp4" onError={() => setVideoFailed(true)} />
+              </>
+            )}
+          </video>
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/60 to-transparent" />
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.5 }}
+            className="absolute inset-0 z-0"
+          >
+            <img
+              src={slides[current].image}
+              alt="Textile Manufacturing"
+              className="w-full h-full object-cover opacity-60"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/60 to-transparent" />
+          </motion.div>
+        </AnimatePresence>
+      )}
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
         <motion.div
@@ -143,7 +228,7 @@ const HeroSlider = () => {
         {slides.map((_, i) => (
           <button
             key={i}
-            onClick={() => setCurrent(i)}
+            onClick={() => goToSlide(i)}
             className={`h-1.5 transition-all rounded-full ${current === i ? 'w-12 bg-[#004A99]' : 'w-4 bg-white/30 hover:bg-white/50'}`}
           />
         ))}
