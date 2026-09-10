@@ -26,6 +26,24 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+async function renderPdfFirstPage(file: File): Promise<string> {
+  const pdfjs = await import('pdfjs-dist');
+  const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  const document = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const page = await document.getPage(1);
+  const initial = page.getViewport({ scale: 1 });
+  const scale = Math.min(3, 1600 / Math.max(initial.width, initial.height));
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.ceil(viewport.width));
+  canvas.height = Math.max(1, Math.ceil(viewport.height));
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not create the PDF artwork preview.');
+  await page.render({ canvas, canvasContext: context, viewport }).promise;
+  return canvas.toDataURL('image/png');
+}
+
 function loadImageSize(dataUrl: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -134,15 +152,23 @@ export function ArtworkPanel({
   const handleFile = async (file: File) => {
     setError(null);
     if (!ACCEPTED_ARTWORK_MIME.includes(file.type)) {
-      setError('Unsupported file type. Please upload PNG, JPG or SVG artwork.');
+      setError('Unsupported file type. Please upload PNG, JPG, SVG or PDF artwork.');
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       setError(`File is too large (max ${(MAX_UPLOAD_BYTES / (1024 * 1024)).toFixed(0)} MB).`);
       return;
     }
-    let dataUrl = await readFileAsDataUrl(file);
-    if (file.type === 'image/png' || file.type === 'image/jpeg') {
+    let dataUrl: string;
+    try {
+      dataUrl = file.type === 'application/pdf'
+        ? await renderPdfFirstPage(file)
+        : await readFileAsDataUrl(file);
+    } catch {
+      setError('Could not read this PDF. Check that it is not password protected or damaged.');
+      return;
+    }
+    if (file.type === 'image/png' || file.type === 'image/jpeg' || file.type === 'application/pdf') {
       try {
         dataUrl = await processRasterArtwork(dataUrl, removeWhiteBg);
       } catch {

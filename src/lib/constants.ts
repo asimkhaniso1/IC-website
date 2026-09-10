@@ -207,7 +207,7 @@ export const TEXT_FONTS = [
 ];
 
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024; // 2 MB
-export const ACCEPTED_ARTWORK_MIME = ['image/png', 'image/jpeg', 'image/svg+xml'];
+export const ACCEPTED_ARTWORK_MIME = ['image/png', 'image/jpeg', 'image/svg+xml', 'application/pdf'];
 
 export const STRETCH_DISCLAIMER =
   'Stretch visualization is an approximation. Actual elongation, recovery and appearance depend on the approved construction and physical sample.';
