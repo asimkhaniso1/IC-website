@@ -284,7 +284,11 @@ function DesignerWorkspace({
   async function runAiReview() {
     setAiReview({ status: 'loading' });
     try {
-      const result = await analyzeDesignAi(spec);
+      // The rendered preview is the source of truth for uploaded artwork.
+      // Its intrinsic aspect ratio and colors cannot be inferred reliably from
+      // the transform box or the generic motif color in the design JSON.
+      const artworkThumb = await previewRef.current?.toPngDataUrl(1);
+      const result = await analyzeDesignAi(spec, artworkThumb);
       setAiReview({ status: 'ready', ...result });
     } catch (err) {
       if (err instanceof AiUnavailableError) {

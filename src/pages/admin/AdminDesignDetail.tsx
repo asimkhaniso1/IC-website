@@ -350,7 +350,7 @@ function DetailBody({ id }: { id: string }) {
             preparedBy={actorEmail}
           />
 
-          <Panel title="Weavability / Manufacturability">
+          <Panel title="Manufacturability">
             {project.weavability ? (
               <div className="flex flex-col gap-2">
                 <Badge

@@ -60,7 +60,7 @@ function csvSection(title: string): string {
  * the midpoint of every number found in the string. Returns null only when
  * no usable number is present at all.
  */
-function parsePositive(s: string | undefined): number | null {
+export function parsePositiveDensity(s: string | undefined): number | null {
   if (!s) return null;
   const matches = s.match(/\d+(?:\.\d+)?/g);
   if (!matches || matches.length === 0) return null;
@@ -146,8 +146,8 @@ export function buildLoomDataCsv(
   }
   if (productionSpec.details.notes?.trim()) csv += csvRow('Notes', productionSpec.details.notes.trim());
 
-  const endsPerCm = parsePositive(productionSpec.details.endsPerCm);
-  const picksPerCm = parsePositive(productionSpec.details.picksPerCm);
+  const endsPerCm = parsePositiveDensity(productionSpec.details.endsPerCm);
+  const picksPerCm = parsePositiveDensity(productionSpec.details.picksPerCm);
   if (endsPerCm || picksPerCm) {
     csv += csvSection('COMPUTED LOOM DATA');
     if (endsPerCm) csv += csvRow('Ends across width', String(Math.round((spec.widthMm / 10) * endsPerCm)));
@@ -333,7 +333,7 @@ function quantizeToPalette(canvas: HTMLCanvasElement, palette: PaletteEntry[]): 
  * layout: bottom-up row order, BGR pixel order, rows padded to 4 bytes.
  * Transparent pixels are composited onto white — BMP-24 has no alpha channel.
  */
-function canvasToBmpBlob(canvas: HTMLCanvasElement): Blob {
+export function canvasToBmpBlob(canvas: HTMLCanvasElement): Blob {
   const w = canvas.width;
   const h = canvas.height;
   const ctx = canvas.getContext('2d');
@@ -455,6 +455,7 @@ export interface BuildLoomExportOptions {
   spec: DesignSpec;
   productionSpec: ProductionSpec | null;
   meta: { designCode: string; revisionNo: number; preparedBy: string };
+  patternGridOverride?: { dataGridPng: string; previewPng: string; gridBmp: Blob };
 }
 
 export interface PatternGridStatus {
@@ -482,10 +483,11 @@ export async function buildLoomExportZip(
     if (j.artwork.length === 0) {
       patternGrid = { included: false, reason: 'no-artwork' };
     } else {
-      const endsPerCm = parsePositive(productionSpec.details.endsPerCm);
-      const picksPerCm = parsePositive(productionSpec.details.picksPerCm);
+      const endsPerCm = parsePositiveDensity(productionSpec.details.endsPerCm);
+      const picksPerCm = parsePositiveDensity(productionSpec.details.picksPerCm);
       if (endsPerCm && picksPerCm) {
-        const { dataGridPng, previewPng, gridBmp } = await buildPatternGridPngs(j, endsPerCm, picksPerCm);
+        const { dataGridPng, previewPng, gridBmp } = opts.patternGridOverride
+          ?? await buildPatternGridPngs(j, endsPerCm, picksPerCm);
         zip.file('pattern-grid.png', dataUrlToBase64(dataGridPng), { base64: true });
         zip.file('pattern-grid.bmp', gridBmp);
         zip.file('pattern-grid-preview.png', dataUrlToBase64(previewPng), { base64: true });

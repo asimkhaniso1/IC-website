@@ -57,6 +57,10 @@ const SYSTEM_INSTRUCTION = [
   'You are given a customer design specification as JSON, produced by a self-service design studio.',
   'Give advisory, design-level manufacturability feedback only: readability of artwork/text, color count, ' +
     'contrast, stripe/repeat geometry, width sanity, and general weave/knit feasibility concerns.',
+  'When a rendered preview image is supplied, treat it as authoritative for visible artwork size, clipping, ' +
+    'placement and color. Uploaded raster/PDF artwork keeps its own colors; the JSON motif/foreground color ' +
+    'does not replace those colors. Image transform width/height describe an SVG contain box, so do not claim ' +
+    'overflow from those values when the complete artwork is visibly contained inside the fabric preview.',
   'You MUST NOT invent or state specific loom settings, machine gauges, yarn counts/deniers, picks-per-inch, ' +
     'construction details, lead times, or costs/pricing — those are determined later by the technical team, not by you.',
   'You MUST NOT claim, imply or suggest that this design is "approved for production" or manufacturing-final. ' +
@@ -157,6 +161,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   ];
   if (artworkPart) {
     parts.push({ inlineData: { mimeType: artworkPart.mimeType, data: artworkPart.data } });
+    parts.push({
+      text: 'The image above is the rendered flat fabric preview. Use its visible result as the source of truth for artwork fit and contrast.',
+    });
   }
 
   try {
