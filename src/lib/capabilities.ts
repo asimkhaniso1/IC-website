@@ -30,6 +30,10 @@ export interface FamilyCapabilities {
   technicalGraphEnabled: boolean;
   /** Software/factory ceiling for end × pick cells in one generated repeat. */
   maxTechnicalGraphCells: number;
+  /** Nominal warp-end density (ends/cm, across the tape width) for an indicative graph before production densities are approved. */
+  nominalEndsPerCm: number;
+  /** Nominal weft-pick density (picks/cm, along the running length) for an indicative graph before production densities are approved. */
+  nominalPicksPerCm: number;
 }
 
 export type CapabilityMap = Record<Family, FamilyCapabilities>;
@@ -47,6 +51,8 @@ function defaultsFor(family: Family): FamilyCapabilities {
     constructions: [...CONSTRUCTION_LIBRARY[family]],
     technicalGraphEnabled: family === 'J',
     maxTechnicalGraphCells: 16_000_000,
+    nominalEndsPerCm: cap.nominalEndsPerCm,
+    nominalPicksPerCm: cap.nominalPicksPerCm,
   };
 }
 
@@ -121,6 +127,16 @@ function applyRule(target: FamilyCapabilities, key: string, value: unknown): voi
     case 'max_technical_graph_cells': {
       const n = num(value);
       if (n !== undefined && n > 0) target.maxTechnicalGraphCells = Math.floor(n);
+      break;
+    }
+    case 'nominal_ends_per_cm': {
+      const n = num(value);
+      if (n !== undefined && n > 0) target.nominalEndsPerCm = n;
+      break;
+    }
+    case 'nominal_picks_per_cm': {
+      const n = num(value);
+      if (n !== undefined && n > 0) target.nominalPicksPerCm = n;
       break;
     }
     default:

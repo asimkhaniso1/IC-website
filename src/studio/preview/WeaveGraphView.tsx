@@ -18,11 +18,10 @@ import {
   buildGraphPalette,
   buildJacquardPalette,
   buildPatternGridCanvas,
-  NOMINAL_ENDS_PER_CM as PREVIEW_ENDS_PER_CM,
-  NOMINAL_PICKS_PER_CM as PREVIEW_PICKS_PER_CM,
   patternGridSize,
   type PaletteEntry,
 } from '../../lib/jacquardGraph';
+import { GraphRulerFrame } from './GraphRulerFrame';
 
 const STAGE_PAD = 16;
 /** Smallest on-screen cell (px) at which single-thread lines are drawn. */
@@ -41,10 +40,16 @@ export default function WeaveGraphView({
   spec,
   showGrid = true,
   className = '',
+  nominalEndsPerCm,
+  nominalPicksPerCm,
 }: {
   spec: JacquardSpec;
   showGrid?: boolean;
   className?: string;
+  /** Nominal warp-end density (ends/cm, across the width) from the Manufacturing Capability Library. */
+  nominalEndsPerCm: number;
+  /** Nominal weft-pick density (picks/cm, along the running length) from the Manufacturing Capability Library. */
+  nominalPicksPerCm: number;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -54,7 +59,7 @@ export default function WeaveGraphView({
   const [error, setError] = useState<string | null>(null);
   const [palette, setPalette] = useState<PaletteEntry[]>(() => buildJacquardPalette(spec));
 
-  const { cols, rows } = patternGridSize(spec, PREVIEW_ENDS_PER_CM, PREVIEW_PICKS_PER_CM);
+  const { cols, rows } = patternGridSize(spec, nominalEndsPerCm, nominalPicksPerCm);
 
   useLayoutEffect(() => {
     const el = stageRef.current;
@@ -73,7 +78,7 @@ export default function WeaveGraphView({
       try {
         // Uploaded logos keep their own colours: their main colours join the yarn palette.
         const graphPalette = await buildGraphPalette(spec);
-        const raw = await buildPatternGridCanvas(spec, PREVIEW_ENDS_PER_CM, PREVIEW_PICKS_PER_CM, graphPalette);
+        const raw = await buildPatternGridCanvas(spec, nominalEndsPerCm, nominalPicksPerCm, graphPalette);
         const canvas = canvasRef.current;
         if (cancelled || !canvas) return;
         canvas.width = raw.width;
@@ -90,7 +95,7 @@ export default function WeaveGraphView({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [spec]);
+  }, [spec, nominalEndsPerCm, nominalPicksPerCm]);
 
   // True proportions: the box is the repeat length × fabric width in mm, so cells
   // are rectangles when ends/cm and picks/cm differ (same as the technical graph).
@@ -163,23 +168,29 @@ export default function WeaveGraphView({
       </div>
 
       <div ref={stageRef} className="relative flex min-h-96 flex-1 overflow-auto">
-        <div
-          className="relative m-auto shrink-0 border border-slate-400 bg-white shadow-sm"
-          style={{ width: boxW, height: boxH }}
+        <GraphRulerFrame
+          lengthMm={lengthMm}
+          widthMm={widthMm}
+          pxPerMm={fitPxPerMm * zoom}
+          boxW={boxW}
+          boxH={boxH}
+          className="m-auto"
         >
-          <canvas
-            ref={canvasRef}
-            className={`block h-full w-full [image-rendering:pixelated] ${ready ? '' : 'opacity-0'}`}
-            aria-label={`Weave graph: ${rows} warp ends by ${cols} weft picks`}
-            role="img"
-          />
-          {threadLinesVisible && (
-            <div className="pointer-events-none absolute inset-0" style={gridLines(CELL_LINE, cellW, cellH)} />
-          )}
-          {showGrid && (
-            <div className="pointer-events-none absolute inset-0" style={gridLines(MAJOR_LINE, cellW * 10, cellH * 10)} />
-          )}
-        </div>
+          <div className="relative h-full w-full border border-slate-400 bg-white shadow-sm">
+            <canvas
+              ref={canvasRef}
+              className={`block h-full w-full [image-rendering:pixelated] ${ready ? '' : 'opacity-0'}`}
+              aria-label={`Weave graph: ${rows} warp ends by ${cols} weft picks`}
+              role="img"
+            />
+            {threadLinesVisible && (
+              <div className="pointer-events-none absolute inset-0" style={gridLines(CELL_LINE, cellW, cellH)} />
+            )}
+            {showGrid && (
+              <div className="pointer-events-none absolute inset-0" style={gridLines(MAJOR_LINE, cellW * 10, cellH * 10)} />
+            )}
+          </div>
+        </GraphRulerFrame>
         {(error || spec.artwork.length === 0) && (
           <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
             <span className={`rounded-lg border bg-white/95 px-3 py-1.5 text-xs shadow-sm ${error ? 'border-red-200 text-red-600' : 'border-slate-200 text-slate-600'}`}>
@@ -190,7 +201,7 @@ export default function WeaveGraphView({
       </div>
 
       <p className="shrink-0 text-center text-[11px] italic text-slate-400">
-        Indicative weave graph at a nominal {PREVIEW_ENDS_PER_CM} ends/cm × {PREVIEW_PICKS_PER_CM} picks/cm — our
+        Indicative weave graph at a nominal {nominalEndsPerCm} ends/cm × {nominalPicksPerCm} picks/cm — our
         technical team prepares the final loom graph
       </p>
     </div>

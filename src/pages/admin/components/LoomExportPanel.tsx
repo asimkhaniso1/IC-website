@@ -9,9 +9,10 @@ import {
   buildLoomExportZip, canvasToBmpBlob, downloadBlob, LoomExportError, parsePositiveDensity, type PatternGridStatus,
 } from '../../../lib/loomExport';
 import {
-  buildGraphPalette, buildJacquardPalette, buildPatternGridCanvas, NOMINAL_ENDS_PER_CM, NOMINAL_PICKS_PER_CM,
+  buildGraphPalette, buildJacquardPalette, buildPatternGridCanvas, niceRulerStep,
   type PaletteEntry,
 } from '../../../lib/jacquardGraph';
+import { GraphRulerFrame, RULER_SIZE } from '../../../studio/preview/GraphRulerFrame';
 import { revisionLabel } from '../../../lib/ids';
 import { useCapabilities } from '../../../lib/capabilities';
 import type { DesignSpec, JacquardSpec, ProductionSpec } from '../../../lib/types';
@@ -147,7 +148,7 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
       availW = availW / 2 - 12; // the two graphs sit side by side
       availH -= 20; // room for their captions
     }
-    const fit = Math.floor(Math.min(availW / lengthMm, availH / widthMm) * 10) / 10;
+    const fit = Math.floor(Math.min((availW - RULER_SIZE) / lengthMm, (availH - RULER_SIZE) / widthMm) * 10) / 10;
     setZoom(Math.max(1, Math.min(MAX_PX_PER_MM, fit)));
   }
 
@@ -171,7 +172,7 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
       // Same palette as the customer's Graph tab, so both graphs show the same yarns.
       const graphPalette = await buildGraphPalette(jacquard);
       const raw = await buildPatternGridCanvas(jacquard, endsPerCm, picksPerCm, graphPalette);
-      const customerRaw = await buildPatternGridCanvas(jacquard, NOMINAL_ENDS_PER_CM, NOMINAL_PICKS_PER_CM, graphPalette);
+      const customerRaw = await buildPatternGridCanvas(jacquard, familyCapability.nominalEndsPerCm, familyCapability.nominalPicksPerCm, graphPalette);
       setGraph({
         dataGridPng: raw.toDataURL('image/png'), cols: raw.width, rows: raw.height, sourceKey: graphSourceKey,
         palette: graphPalette,
@@ -280,8 +281,26 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
     doc.setFontSize(9); doc.text(`${graph.rows} warp ends × ${graph.cols} weft picks | Ends/cm ${endsPerCm} | Picks/cm ${picksPerCm} | ${widthMm} mm × ${lengthMm} mm repeat`, 12, 20);
     const pageW = doc.internal.pageSize.getWidth() - 24;
     const pageH = doc.internal.pageSize.getHeight() - 34;
-    const ratio = Math.min(pageW / lengthMm, pageH / widthMm);
-    doc.addImage(artifacts.previewPng, 'PNG', 12, 26, lengthMm * ratio, widthMm * ratio);
+    const rulerMm = 7;
+    const ratio = Math.min((pageW - rulerMm) / lengthMm, (pageH - rulerMm) / widthMm);
+    const imgX = 12 + rulerMm;
+    const imgY = 26 + rulerMm;
+    doc.addImage(artifacts.previewPng, 'PNG', imgX, imgY, lengthMm * ratio, widthMm * ratio);
+    // Ruler ticks along the top (length) and left (width) edges of the image.
+    const minorStep = niceRulerStep(ratio, 1.2);
+    const labelStep = niceRulerStep(ratio, 9);
+    doc.setDrawColor(148, 163, 184); doc.setLineWidth(0.15);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(4.6); doc.setTextColor(100, 116, 139);
+    for (let m = 0; m <= lengthMm; m += minorStep) {
+      const x = imgX + m * ratio, major = m % labelStep === 0;
+      doc.line(x, imgY - (major ? 1.8 : 0.9), x, imgY);
+      if (major) doc.text(String(m), x, imgY - 2.1, { align: 'center' });
+    }
+    for (let m = 0; m <= widthMm; m += minorStep) {
+      const yy = imgY + m * ratio, major = m % labelStep === 0;
+      doc.line(imgX - (major ? 1.8 : 0.9), yy, imgX, yy);
+      if (major) doc.text(String(m), imgX - 2.1, yy + 0.6, { align: 'right' });
+    }
     doc.save(`${designCode}-${revisionLabel(revisionNo)}-technical-graph.pdf`);
   }
 
@@ -367,12 +386,14 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
                 {compare && (
                   <figure className="flex flex-col gap-1">
                     <figcaption className="text-[11px] font-medium text-slate-500">
-                      Customer graph — nominal {NOMINAL_ENDS_PER_CM} ends/cm × {NOMINAL_PICKS_PER_CM} picks/cm ({graph.customer.rows} × {graph.customer.cols})
+                      Customer graph — nominal {familyCapability.nominalEndsPerCm} ends/cm × {familyCapability.nominalPicksPerCm} picks/cm ({graph.customer.rows} × {graph.customer.cols})
                     </figcaption>
-                    <div className="relative bg-white ring-1 ring-slate-400" style={{ width: boxW, height: boxH }}>
-                      <img src={graph.customer.dataUrl} alt="Customer-facing weave graph" className="block h-full w-full [image-rendering:pixelated]" />
-                      <GridOverlay boxW={boxW} boxH={boxH} cols={graph.customer.cols} rows={graph.customer.rows} />
-                    </div>
+                    <GraphRulerFrame lengthMm={lengthMm} widthMm={widthMm} pxPerMm={zoom} boxW={boxW} boxH={boxH}>
+                      <div className="relative h-full w-full bg-white ring-1 ring-slate-400">
+                        <img src={graph.customer.dataUrl} alt="Customer-facing weave graph" className="block h-full w-full [image-rendering:pixelated]" />
+                        <GridOverlay boxW={boxW} boxH={boxH} cols={graph.customer.cols} rows={graph.customer.rows} />
+                      </div>
+                    </GraphRulerFrame>
                   </figure>
                 )}
                 <figure className="flex flex-col gap-1">
@@ -381,16 +402,18 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
                       Technical graph — approved {endsPerCm} ends/cm × {picksPerCm} picks/cm ({graph.rows} × {graph.cols}){edited ? ' · edited' : ''}
                     </figcaption>
                   )}
-                  <div className="relative bg-white ring-1 ring-slate-400" style={{ width: boxW, height: boxH }}>
-                    <canvas
-                      ref={canvasRef}
-                      onMouseDown={beginStroke}
-                      onMouseMove={(event) => { trackHover(event); editCell(event, true); }}
-                      onMouseLeave={() => setHoverCell(null)}
-                      className={`block h-full w-full select-none [image-rendering:pixelated] ${editing ? 'cursor-crosshair touch-none' : ''}`}
-                    />
-                    <GridOverlay boxW={boxW} boxH={boxH} cols={graph.cols} rows={graph.rows} />
-                  </div>
+                  <GraphRulerFrame lengthMm={lengthMm} widthMm={widthMm} pxPerMm={zoom} boxW={boxW} boxH={boxH}>
+                    <div className="relative h-full w-full bg-white ring-1 ring-slate-400">
+                      <canvas
+                        ref={canvasRef}
+                        onMouseDown={beginStroke}
+                        onMouseMove={(event) => { trackHover(event); editCell(event, true); }}
+                        onMouseLeave={() => setHoverCell(null)}
+                        className={`block h-full w-full select-none [image-rendering:pixelated] ${editing ? 'cursor-crosshair touch-none' : ''}`}
+                      />
+                      <GridOverlay boxW={boxW} boxH={boxH} cols={graph.cols} rows={graph.rows} />
+                    </div>
+                  </GraphRulerFrame>
                 </figure>
               </div>
             </div>

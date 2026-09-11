@@ -185,14 +185,29 @@ export const STUDIO_CARDS: {
   },
 ];
 
-/** Manufacturing capability limits (from the Interconverters capability matrix). */
+/**
+ * Manufacturing capability limits (from the Interconverters capability matrix).
+ * `nominalEndsPerCm`/`nominalPicksPerCm` are the fallback densities used to
+ * draw an INDICATIVE jacquard weave graph before a design has an approved
+ * production specification — narrow-fabric convention: ends run across the
+ * tape width, picks run along the running (production) length. The
+ * admin-editable `capability_rules` table (see capabilities.ts) is the real
+ * source of truth; these are only the offline/first-load default.
+ */
 export const CAPABILITIES: Record<
   Family,
-  { minWidthMm: number; maxWidthMm: number; maxColors: number; elongation: string }
+  {
+    minWidthMm: number;
+    maxWidthMm: number;
+    maxColors: number;
+    elongation: string;
+    nominalEndsPerCm: number;
+    nominalPicksPerCm: number;
+  }
 > = {
-  J: { minWidthMm: 10, maxWidthMm: 100, maxColors: 6, elongation: '10% – 200%' },
-  W: { minWidthMm: 2, maxWidthMm: 320, maxColors: 8, elongation: '10% – 200%' },
-  K: { minWidthMm: 5, maxWidthMm: 150, maxColors: 4, elongation: '10% – 200%' },
+  J: { minWidthMm: 10, maxWidthMm: 100, maxColors: 6, elongation: '10% – 200%', nominalEndsPerCm: 40, nominalPicksPerCm: 30 },
+  W: { minWidthMm: 2, maxWidthMm: 320, maxColors: 8, elongation: '10% – 200%', nominalEndsPerCm: 40, nominalPicksPerCm: 30 },
+  K: { minWidthMm: 5, maxWidthMm: 150, maxColors: 4, elongation: '10% – 200%', nominalEndsPerCm: 40, nominalPicksPerCm: 30 },
 };
 
 /** Web-safe fonts offered in the jacquard text tool. */

@@ -30,8 +30,7 @@ import { describeColor } from '../studio/color/naming';
 import {
   buildGraphPalette,
   buildPatternGridCanvas,
-  NOMINAL_ENDS_PER_CM,
-  NOMINAL_PICKS_PER_CM,
+  niceRulerStep,
   renderGraphPng,
   type PaletteEntry,
 } from '../lib/jacquardGraph';
@@ -837,7 +836,16 @@ export interface SpecPdfExtras {
   aiReview?: AiReviewResult;
   /** Latest AI photorealistic render (data URL) — printed as an indicative visualization. */
   aiPhoto?: string;
+  /**
+   * Nominal jacquard weave-graph density from the live Manufacturing
+   * Capability Library. Falls back to the library's own offline default
+   * (40 ends/cm × 30 picks/cm) when the caller can't resolve it — e.g. a
+   * context with no `useCapabilities()` — so the graph is never skipped.
+   */
+  nominalDensity?: { endsPerCm: number; picksPerCm: number };
 }
+
+const FALLBACK_NOMINAL_DENSITY = { endsPerCm: 40, picksPerCm: 30 };
 
 export async function generateSpecPdf(
   rec: DesignRecord,
@@ -853,7 +861,7 @@ export async function generateSpecPdf(
   if (extras?.aiPhoto) {
     y = await drawAiPhoto(doc, y, extras.aiPhoto);
   }
-  y = await drawWeaveGraph(doc, y, rec.spec);
+  y = await drawWeaveGraph(doc, y, rec.spec, extras?.nominalDensity ?? FALLBACK_NOMINAL_DENSITY);
   y = drawSpecTable(doc, y, rec.spec);
   y = drawCustomerTechnicalInput(doc, y, rec.spec.technical);
   y = drawWeavability(doc, y, rec.weavability);
@@ -877,7 +885,38 @@ const WEAVE_GRAPH_CAPTION =
   'Indicative weave graph — one square per warp end × weft pick at nominal density. Uploaded logos keep their own colours. ' +
   'The Interconverters technical team prepares the final loom graph from the approved production specification.';
 
-async function drawWeaveGraph(doc: jsPDF, y: number, spec: DesignSpec): Promise<number> {
+/** Space reserved for the ruler ticks/labels along the top and left of the graph image, in mm on the page. */
+const GRAPH_RULER_MM = 7;
+
+/** Draws mm tick marks + labels along the top (length) and left (width) edges of an image already placed at (imgX, imgY). */
+function drawGraphRuler(doc: jsPDF, imgX: number, imgY: number, lengthMm: number, widthMm: number, fit: number): void {
+  const minorStep = niceRulerStep(fit, 1.2);
+  const labelStep = niceRulerStep(fit, 9);
+  doc.setDrawColor(...SLATE_400);
+  doc.setLineWidth(0.15);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(4.6);
+  doc.setTextColor(...SLATE_500);
+  for (let m = 0; m <= lengthMm; m += minorStep) {
+    const x = imgX + m * fit;
+    const major = m % labelStep === 0;
+    doc.line(x, imgY - (major ? 1.8 : 0.9), x, imgY);
+    if (major) doc.text(String(m), x, imgY - 2.1, { align: 'center' });
+  }
+  for (let m = 0; m <= widthMm; m += minorStep) {
+    const yy = imgY + m * fit;
+    const major = m % labelStep === 0;
+    doc.line(imgX - (major ? 1.8 : 0.9), yy, imgX, yy);
+    if (major) doc.text(String(m), imgX - 2.1, yy + 0.6, { align: 'right' });
+  }
+}
+
+async function drawWeaveGraph(
+  doc: jsPDF,
+  y: number,
+  spec: DesignSpec,
+  nominalDensity: { endsPerCm: number; picksPerCm: number }
+): Promise<number> {
   if (spec.family !== 'J') return y;
   const j = spec as JacquardSpec;
   if (j.artwork.length === 0) return y;
@@ -888,7 +927,7 @@ async function drawWeaveGraph(doc: jsPDF, y: number, spec: DesignSpec): Promise<
   let palette: PaletteEntry[];
   try {
     palette = await buildGraphPalette(j);
-    const raw = await buildPatternGridCanvas(j, NOMINAL_ENDS_PER_CM, NOMINAL_PICKS_PER_CM, palette);
+    const raw = await buildPatternGridCanvas(j, nominalDensity.endsPerCm, nominalDensity.picksPerCm, palette);
     cols = raw.width;
     rows = raw.height;
     png = renderGraphPng(raw);
@@ -903,10 +942,12 @@ async function drawWeaveGraph(doc: jsPDF, y: number, spec: DesignSpec): Promise<
   // when ends/cm and picks/cm differ) — same as the studio and technical graphs.
   const lengthMm = Math.max(1, j.repeat.lengthMm);
   const widthMm = Math.max(0.5, j.widthMm);
-  const fit = Math.min((maxW - pad * 2) / lengthMm, (maxH - pad * 2) / widthMm);
+  const availW = maxW - pad * 2 - GRAPH_RULER_MM;
+  const availH = maxH - pad * 2 - GRAPH_RULER_MM;
+  const fit = Math.min(availW / lengthMm, availH / widthMm);
   const imgW = lengthMm * fit;
   const imgH = widthMm * fit;
-  const boxH = imgH + pad * 2;
+  const boxH = imgH + pad * 2 + GRAPH_RULER_MM;
   const keyRows = Math.ceil(palette.length / 3);
 
   // Keep header, graph and key together on one page.
@@ -918,7 +959,7 @@ async function drawWeaveGraph(doc: jsPDF, y: number, spec: DesignSpec): Promise<
   doc.setTextColor(...SLATE_600);
   const stats = doc.splitTextToSize(
     `${rows} warp ends × ${cols} weft picks  ·  one ${j.repeat.lengthMm} mm repeat  ·  nominal ` +
-      `${NOMINAL_ENDS_PER_CM} ends/cm × ${NOMINAL_PICKS_PER_CM} picks/cm  ·  bold lines every 10 threads`,
+      `${nominalDensity.endsPerCm} ends/cm × ${nominalDensity.picksPerCm} picks/cm  ·  bold lines every 10 threads`,
     CONTENT_W
   ) as string[];
   doc.text(stats, CONTENT_X, y);
@@ -929,7 +970,10 @@ async function drawWeaveGraph(doc: jsPDF, y: number, spec: DesignSpec): Promise<
   doc.setLineWidth(0.3);
   doc.setFillColor(255, 255, 255);
   doc.rect(boxX, y, maxW, boxH, 'FD');
-  doc.addImage(png, 'PNG', boxX + (maxW - imgW) / 2, y + pad, imgW, imgH);
+  const imgX = boxX + GRAPH_RULER_MM + pad + (availW - imgW) / 2;
+  const imgY = y + GRAPH_RULER_MM + pad + (availH - imgH) / 2;
+  doc.addImage(png, 'PNG', imgX, imgY, imgW, imgH);
+  drawGraphRuler(doc, imgX, imgY, lengthMm, widthMm, fit);
   y += boxH + 5;
 
   const colW = CONTENT_W / 3;

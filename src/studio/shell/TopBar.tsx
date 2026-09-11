@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Badge, Button, Modal, TextInput } from '../../components/ui/index';
 import { COMPANY } from '../../lib/constants';
+import { useCapabilities } from '../../lib/capabilities';
 import { revisionLabel } from '../../lib/ids';
 import { getStorageAdapter } from '../../lib/storage/index';
 import type { AiReviewResult, DesignRecord, DesignSpec, PreviewHandle, WeavabilityResult } from '../../lib/types';
@@ -31,7 +32,7 @@ export function TopBar({
   canUndo,
   canRedo,
   onReset,
-  previewRef,
+  pdfPreviewRef,
   aiReview,
   aiPhoto,
 }: {
@@ -46,7 +47,8 @@ export function TopBar({
   canUndo: boolean;
   canRedo: boolean;
   onReset: () => void;
-  previewRef: RefObject<PreviewHandle | null>;
+  /** Flat render WITH ruler/grid baked in — used only for PDF and RFQ preview images. */
+  pdfPreviewRef: RefObject<PreviewHandle | null>;
   /** Latest AI advisory review — included in generated spec PDFs when present. */
   aiReview?: AiReviewResult;
   /** Latest AI photorealistic render — included in generated spec PDFs when present. */
@@ -58,6 +60,8 @@ export function TopBar({
   const [resetOpen, setResetOpen] = useState(false);
   const [rfqDesign, setRfqDesign] = useState<DesignRecord | null>(null);
   const [rfqPreviewPng, setRfqPreviewPng] = useState<string | undefined>();
+  const capabilities = useCapabilities();
+  const nominalDensity = { endsPerCm: capabilities.J.nominalEndsPerCm, picksPerCm: capabilities.J.nominalPicksPerCm };
 
   const flash = (tone: 'ok' | 'error', text: string) => {
     setFeedback({ tone, text });
@@ -86,9 +90,9 @@ export function TopBar({
     setPdfBusy(true);
     try {
       const rec = record ?? (await persist());
-      const png = await previewRef.current?.toPngDataUrl(3);
+      const png = await pdfPreviewRef.current?.toPngDataUrl(3);
       if (!png) throw new Error('Preview is not ready yet — please try again.');
-      const blob = await generateSpecPdf(rec, png, { aiReview, aiPhoto });
+      const blob = await generateSpecPdf(rec, png, { aiReview, aiPhoto, nominalDensity });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -107,7 +111,7 @@ export function TopBar({
   const handleRfq = async () => {
     try {
       const rec = record ?? (await persist());
-      const png = await previewRef.current?.toPngDataUrl(3);
+      const png = await pdfPreviewRef.current?.toPngDataUrl(3);
       setRfqPreviewPng(png);
       setRfqDesign(rec);
     } catch (e) {
@@ -211,6 +215,7 @@ export function TopBar({
           previewPng={rfqPreviewPng}
           aiReview={aiReview}
           aiPhoto={aiPhoto}
+          nominalDensity={nominalDensity}
           open={!!rfqDesign}
           onClose={() => setRfqDesign(null)}
         />

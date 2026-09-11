@@ -165,14 +165,26 @@ function quantizeToPalette(canvas: HTMLCanvasElement, palette: PaletteEntry[]): 
 }
 
 /**
- * Nominal densities for customer-facing graphs (studio Graph view, spec sheet
- * PDF) — mid-range for narrow jacquard elastics. The approved production
- * densities are set later by the technical team.
+ * "Nice" tick step (1/2/5×10^n of whatever unit `scale` converts to) whose
+ * spacing is at least `minSize` once multiplied by `scale` — shared by every
+ * mm ruler drawn around a jacquard graph (on-screen and in both PDFs), so
+ * tick spacing logic exists in exactly one place.
  */
-export const NOMINAL_ENDS_PER_CM = 40;
-export const NOMINAL_PICKS_PER_CM = 30;
+export function niceRulerStep(scale: number, minSize: number): number {
+  const candidates = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
+  if (scale <= 0) return candidates[candidates.length - 1];
+  return candidates.find((c) => c * scale >= minSize) ?? candidates[candidates.length - 1];
+}
 
-/** Cells in one repeat: columns are weft picks along the repeat length, rows are warp ends across the width. */
+/**
+ * Cells in one repeat: columns are weft picks along the running (production)
+ * length, rows are warp ends across the tape width — narrow-fabric loom
+ * convention (the opposite axis assignment from a wide floor loom). Nominal
+ * preview densities (before a design has an approved production
+ * specification) live in the Manufacturing Capability Library — see
+ * `FamilyCapabilities.nominalEndsPerCm`/`nominalPicksPerCm` in capabilities.ts
+ * — not here, so this module never hardcodes a density of its own.
+ */
 export function patternGridSize(spec: JacquardSpec, endsPerCm: number, picksPerCm: number): { cols: number; rows: number } {
   return {
     cols: Math.max(1, Math.round((spec.repeat.lengthMm / 10) * picksPerCm)),

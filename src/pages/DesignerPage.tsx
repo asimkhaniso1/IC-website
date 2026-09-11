@@ -240,6 +240,12 @@ function DesignerWorkspace({
   // grid/ruler/handles) whatever tab or toggle is on screen; an unchanged design
   // is only sent to the AI review once.
   const reviewRef = useRef<PreviewHandle | null>(null);
+  // A THIRD hidden render, distinct from reviewRef: the spec PDF's "Fabric
+  // Preview" image should show its ruler and dimension callouts, but reviewRef
+  // must stay bare — it also feeds the AI Photo reference image and the AI
+  // review thumbnail, where baked-in ruler/grid lines would contaminate the
+  // AI's output rather than help the customer read the fabric.
+  const pdfPreviewRef = useRef<PreviewHandle | null>(null);
   const aiReviewCache = useRef(new Map<string, { level: Feasibility; issues: WeavabilityIssue[]; summary: string }>());
 
   useEffect(() => {
@@ -353,7 +359,7 @@ function DesignerWorkspace({
           canUndo={canUndo}
           canRedo={canRedo}
           onReset={() => replace(createDefaultSpecFor(familySlug))}
-          previewRef={reviewRef}
+          pdfPreviewRef={pdfPreviewRef}
           aiReview={aiReview.status === 'ready' ? aiReview : undefined}
           aiPhoto={aiPhoto.status === 'ready' ? aiPhoto.image : undefined}
         />
@@ -408,7 +414,13 @@ function DesignerWorkspace({
           </div>
           <div className="flex min-h-0 flex-1">
             {mode === 'graph' && familySlug === 'jacquard' && (
-              <WeaveGraphView spec={spec as JacquardSpec} showGrid={showGrid} className="w-full" />
+              <WeaveGraphView
+                spec={spec as JacquardSpec}
+                showGrid={showGrid}
+                className="w-full"
+                nominalEndsPerCm={capabilities.J.nominalEndsPerCm}
+                nominalPicksPerCm={capabilities.J.nominalPicksPerCm}
+              />
             )}
             {/* Stays mounted (hidden) in Graph view so its zoom and stretch state survive a tab switch. */}
             <div className={mode === 'graph' ? 'hidden' : 'flex min-h-0 flex-1'}>
@@ -423,9 +435,13 @@ function DesignerWorkspace({
               className="w-full"
             />
             </div>
-            {/* Canonical render for AI review, AI photo and the spec PDF: always flat, no grid/ruler/selection handles. */}
+            {/* Canonical render for AI review and AI photo: always flat, no grid/ruler/selection handles. */}
             <div className="hidden" aria-hidden="true">
               <FabricPreview spec={spec} mode="flat" previewRef={reviewRef} />
+            </div>
+            {/* Canonical render for the spec PDF's Fabric Preview image: flat, with ruler + dimension callouts baked in. */}
+            <div className="hidden" aria-hidden="true">
+              <FabricPreview spec={spec} mode="flat" showGrid showRuler previewRef={pdfPreviewRef} />
             </div>
           </div>
         </div>

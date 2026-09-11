@@ -221,7 +221,13 @@ function EditorWorkspace({
             </div>
             <div className="flex min-h-0 flex-1">
               {mode === 'graph' && spec.family === 'J' ? (
-                <WeaveGraphView spec={spec as JacquardSpec} showGrid className="w-full" />
+                <WeaveGraphView
+                  spec={spec as JacquardSpec}
+                  showGrid
+                  className="w-full"
+                  nominalEndsPerCm={capabilities.J.nominalEndsPerCm}
+                  nominalPicksPerCm={capabilities.J.nominalPicksPerCm}
+                />
               ) : (
                 <FabricPreview
                   spec={spec}
