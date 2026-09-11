@@ -181,7 +181,7 @@ export const STUDIO_CARDS: {
     label: 'Non-Elastic Webbing / Tape',
     description: 'Rigid woven tapes and webbing for straps and industrial use',
     styles: ['Standard', 'Striped', 'Custom'],
-    image: '/images/4.jpg',
+    image: '/images/hf/tape-rolls.webp',
   },
 ];
 

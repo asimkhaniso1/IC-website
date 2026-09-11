@@ -50,32 +50,32 @@ const HeroSlider = () => {
   // video is off (reduced motion / Save-Data) or can't play.
   const slides = [
     {
-      image: '/images/webp/4.webp',
+      image: '/images/hf/yarn-cones.webp',
       title: 'Quality Material Selection',
       subtitle: 'Cotton, Polyester, Aramid and other special yarns.'
     },
     {
-      image: '/images/webp/5.webp',
+      image: '/images/hf/jacquard-graph-to-weave.webp',
       title: 'Jacquard Weaving',
       subtitle: 'Exquisite custom patterns and branding woven directly into high-quality elastic.'
     },
     {
-      image: '/images/webp/1.webp',
+      image: '/images/hf/narrow-loom.webp',
       title: 'Precision Weaving',
       subtitle: 'Ultra-modern production facilities for individual textile solutions.'
     },
     {
-      image: '/images/webp/3.webp',
+      image: '/images/hf/jacquard-tape.webp',
       title: 'High-Tech Narrow Textiles',
       subtitle: 'Engineering excellence for extreme requirements.'
     },
     {
-      image: '/images/a-2-crochet-machine-500x500.jpg',
+      image: '/images/hf/knitting-needles.webp',
       title: 'Advanced Knitting',
       subtitle: 'Specialized knitted fabrics for technical borders and industrial reinforcement.'
     },
     {
-      image: '/images/webp/2.webp',
+      image: '/images/hf/tape-rolls.webp',
       title: 'Premium Tapes & Braids',
       subtitle: 'Woven, elastic, and non-elastic solutions for global industries.'
     }
@@ -504,7 +504,7 @@ export default function Home() {
               className="relative rounded-2xl overflow-hidden shadow-2xl"
             >
               <img
-                src="/images/a-2-crochet-machine-500x500.jpg"
+                src="/images/hf/cards/knitting-needles.webp"
                 alt="Our Facility"
                 loading="lazy"
                 decoding="async"
@@ -690,31 +690,31 @@ export default function Home() {
               title="Hemming Strap"
               description="Woven, elastic, variable width and colour. Perfect for specialized garment edges."
               features={["2-coloured options", "Customer-specific finish", "Versatile"]}
-              image="/images/webp/6.webp"
+              image="/images/hf/cards/narrow-loom-2.webp"
             />
             <ProductCard
               title="Carrier Strap"
               description="Heavy-duty woven straps with elastic variable width and colour for demanding equipment."
               features={["Maximum safety", "High load capacity", "Technical equipment"]}
-              image="/images/webp/7.webp"
+              image="/images/hf/cards/narrow-loom.webp"
             />
             <ProductCard
               title="Braided Elastic with Buttonholes"
               description="Braided, elastic, slotted solutions carefully variable in width and colour."
               features={["Slotted structure", "Variable width", "Premium finish"]}
-              image="/images/webp/8.webp"
+              image="/images/hf/cards/knitting-needles-2.webp"
             />
             <ProductCard
               title="FlexiKlett"
               description="Woven, elastic, hook-and-loop-ready fastener capable tapes."
               features={["Hook-and-loop ready", "Customer-specific", "Variable colour"]}
-              image="/images/webp/9.webp"
+              image="/images/hf/cards/jacquard-tape-2.webp"
             />
             <ProductCard
               title="Woven Form Tapes"
               description="Flame-retardant, slotted, perforated tapes with eyelets for ultimate flexibility."
               features={["Flame-retardant", "With eyelets", "Perforated design"]}
-              image="/images/webp/5.webp"
+              image="/images/hf/cards/yarn-cones.webp"
             />
             <ProductCard
               title="Grab Loops"
@@ -738,7 +738,7 @@ export default function Home() {
               title="Twill Tape"
               description="Strong woven twill tape ideal for binding, seams, and finishing edges with herringbone patterns."
               features={["Herringbone weave", "High strength", "Various widths"]}
-              image="/images/webp/4.webp"
+              image="/images/hf/cards/tape-rolls-2.webp"
             />
           </div>
         </div>
