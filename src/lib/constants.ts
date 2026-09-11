@@ -193,6 +193,16 @@ export const STUDIO_CARDS: {
  * tape width, picks run along the running (production) length. The
  * admin-editable `capability_rules` table (see capabilities.ts) is the real
  * source of truth; these are only the offline/first-load default.
+ *
+ * `maxWidthMm` reflects the actual loom/machine reed width, confirmed 2026-09-11:
+ *  - J (jacquard elastic): Jiangsu Jingwu JYNFJ family — reed widths 27/42/50/65mm,
+ *    12 frames, 128–640 jacquard hooks depending on setup. Max width = 65mm.
+ *  - W (woven elastic/tape): Jingwu JYF family — reed widths 30/35/45/55/80mm,
+ *    weft density ~3.5–36.7 picks/cm depending on setup. Max width = 80mm.
+ *  - K (knitted elastic): Wenzhou Jiasheng JSGA760/B3 (3-bar crochet/knit,
+ *    ~15 needles for this family, 1500 rpm, 1.5kW, 380V) — max width not yet
+ *    confirmed against this machine, so left at the prior business default.
+ * `maxColors`/`elongation` remain business settings, not machine specs.
  */
 export const CAPABILITIES: Record<
   Family,
@@ -205,8 +215,8 @@ export const CAPABILITIES: Record<
     nominalPicksPerCm: number;
   }
 > = {
-  J: { minWidthMm: 10, maxWidthMm: 100, maxColors: 6, elongation: '10% – 200%', nominalEndsPerCm: 40, nominalPicksPerCm: 30 },
-  W: { minWidthMm: 2, maxWidthMm: 320, maxColors: 8, elongation: '10% – 200%', nominalEndsPerCm: 40, nominalPicksPerCm: 30 },
+  J: { minWidthMm: 10, maxWidthMm: 65, maxColors: 6, elongation: '10% – 200%', nominalEndsPerCm: 40, nominalPicksPerCm: 30 },
+  W: { minWidthMm: 2, maxWidthMm: 80, maxColors: 8, elongation: '10% – 200%', nominalEndsPerCm: 40, nominalPicksPerCm: 30 },
   K: { minWidthMm: 5, maxWidthMm: 150, maxColors: 4, elongation: '10% – 200%', nominalEndsPerCm: 40, nominalPicksPerCm: 30 },
 };
 

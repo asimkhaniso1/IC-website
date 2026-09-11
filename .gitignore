@@ -14,3 +14,6 @@ tmp/
 # docs/hero-video/01-storyboard-and-credit-plan.md. Shipped files live in public/video/.
 docs/hero-video/clips/
 docs/hero-video/keyframes/
+
+# Supabase CLI local cache/state
+supabase/.temp/
