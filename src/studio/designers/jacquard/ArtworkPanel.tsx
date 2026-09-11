@@ -11,8 +11,85 @@ import {
   TextInput,
 } from '../../../components/ui/index';
 import { ACCEPTED_ARTWORK_MIME, MAX_UPLOAD_BYTES, TEXT_FONTS } from '../../../lib/constants';
+import { hexToRgb, rgbToHex } from '../../../lib/color';
 import type { ArtworkItem, JacquardSpec } from '../../../lib/types';
 import { GLOSSARY } from '../../glossary';
+
+/** Minimum squared RGB distance for an extracted color to count as genuinely
+ * different from the current motif color — small variation (anti-aliasing,
+ * near-identical shades) shouldn't keep re-triggering the swap below. */
+const MEANINGFUL_COLOR_DIFF_SQ = 60 ** 2;
+/** How close a sampled pixel has to be to the base/ground color to be treated
+ * as background (fabric showing through) rather than part of the motif. */
+const BASE_COLOR_MATCH_SQ = 40 ** 2;
+
+function rgbDistSq(a: { r: number; g: number; b: number }, b: { r: number; g: number; b: number }): number {
+  return (a.r - b.r) ** 2 + (a.g - b.g) ** 2 + (a.b - b.b) ** 2;
+}
+
+/**
+ * Samples the uploaded artwork for its dominant non-background color, so a
+ * colorful logo can drive the motif color instead of the studio always
+ * defaulting new artwork to the current (often still-default) fg color.
+ * Transparent pixels and pixels close to the fabric's base/ground color are
+ * excluded — those are background showing through, not the motif itself.
+ */
+async function extractDominantColor(dataUrl: string, baseColorHex: string): Promise<string | null> {
+  const img = await new Promise<HTMLImageElement | null>((resolve) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => resolve(null);
+    el.src = dataUrl;
+  });
+  if (!img || !img.naturalWidth || !img.naturalHeight) return null;
+
+  const SAMPLE = 64; // a small canvas is plenty for a dominant-color histogram
+  const canvas = document.createElement('canvas');
+  canvas.width = SAMPLE;
+  canvas.height = SAMPLE;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, SAMPLE, SAMPLE);
+
+  let data: Uint8ClampedArray;
+  try {
+    data = ctx.getImageData(0, 0, SAMPLE, SAMPLE).data;
+  } catch {
+    return null; // shouldn't happen for a same-origin data URL, but don't block upload on it
+  }
+
+  const base = hexToRgb(baseColorHex) ?? { r: 255, g: 255, b: 255 };
+  const STEP = 24; // quantize channels so near-identical shades group together
+  const buckets = new Map<string, { count: number; r: number; g: number; b: number }>();
+
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 128) continue; // transparent — knocked-out background
+    const px = { r: data[i], g: data[i + 1], b: data[i + 2] };
+    if (rgbDistSq(px, base) < BASE_COLOR_MATCH_SQ) continue; // fabric ground showing through
+    const key = `${Math.round(px.r / STEP)}-${Math.round(px.g / STEP)}-${Math.round(px.b / STEP)}`;
+    const bucket = buckets.get(key);
+    if (bucket) {
+      bucket.count += 1;
+      bucket.r += px.r;
+      bucket.g += px.g;
+      bucket.b += px.b;
+    } else {
+      buckets.set(key, { count: 1, ...px });
+    }
+  }
+
+  let best: { count: number; r: number; g: number; b: number } | null = null;
+  for (const bucket of buckets.values()) {
+    if (!best || bucket.count > best.count) best = bucket;
+  }
+  if (!best || best.count < 4) return null; // not enough signal to be confident
+
+  return rgbToHex({
+    r: Math.round(best.r / best.count),
+    g: Math.round(best.g / best.count),
+    b: Math.round(best.b / best.count),
+  });
+}
 
 /** Generous upper bound for artwork width/height sliders, in mm. */
 const ARTWORK_SIZE_MAX_MM = 320;
@@ -189,11 +266,27 @@ export function ArtworkPanel({
     const widthMm = spec.widthMm * 0.6;
     const heightMm = widthMm * aspect;
 
+    // If the logo itself has a clear dominant color, let that drive the
+    // motif color instead of leaving new artwork stuck on whatever fg
+    // happens to be set (often still the black default) — the previous
+    // motif color moves down to secondary rather than being discarded.
+    let fg = spec.fg;
+    let secondaryColor = spec.secondaryColor;
+    const dominant = await extractDominantColor(dataUrl, spec.baseColor);
+    if (dominant) {
+      const dominantRgb = hexToRgb(dominant);
+      const fgRgb = hexToRgb(spec.fg);
+      if (dominantRgb && fgRgb && rgbDistSq(dominantRgb, fgRgb) > MEANINGFUL_COLOR_DIFF_SQ) {
+        secondaryColor = spec.fg;
+        fg = dominant;
+      }
+    }
+
     const item: ArtworkItem = {
       id: crypto.randomUUID(),
       kind: 'image',
       dataUrl,
-      color: spec.fg,
+      color: fg,
       transform: {
         xMm: 0,
         yMm: 0,
@@ -203,7 +296,7 @@ export function ArtworkPanel({
         mirrored: false,
       },
     };
-    updateItems([...spec.artwork, item]);
+    onChange({ ...spec, artwork: [...spec.artwork, item], fg, secondaryColor });
     setActiveId(item.id);
     setLockAspect((m) => ({ ...m, [item.id]: true }));
   };
