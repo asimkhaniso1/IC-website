@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, FolderOpen } from 'lucide-react';
 import { Badge } from '../components/ui/index';
-import HeroVideoBackground from '../components/HeroVideoBackground';
 import { COMPANY, FAMILY_BY_CODE, STUDIO_CARDS } from '../lib/constants';
 import { getStorageAdapter } from '../lib/storage/index';
 import { revisionLabel } from '../lib/ids';
@@ -44,10 +43,8 @@ export default function StudioSelect() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-slate-950 px-6 py-16 sm:py-24">
-        {/* Homepage hero loop behind the header; the gradient keeps the left-aligned copy readable. */}
-        <HeroVideoBackground className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[72%_50%] opacity-50" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-transparent" />
+      {/* Kept compact so all four design options are visible without scrolling on a laptop screen. */}
+      <section className="relative overflow-hidden bg-slate-950 px-6 py-7 sm:py-8">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{
@@ -56,10 +53,10 @@ export default function StudioSelect() {
             backgroundSize: '40px 40px',
           }}
         />
-        <div className="relative mx-auto max-w-5xl">
+        <div className="relative mx-auto max-w-6xl">
           <Link
             to="/"
-            className="mb-10 inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
+            className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="inline-flex items-center gap-2 rounded-lg bg-white px-2 py-1">
@@ -67,18 +64,18 @@ export default function StudioSelect() {
               <span className="text-xs font-bold tracking-tight text-brand-600">INTERCONVERTERS</span>
             </span>
           </Link>
-          <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-brand-300">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-300">
             Narrow Fabric Design Studio
           </p>
           <motion.h1
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="max-w-2xl text-4xl font-extrabold tracking-tight text-white sm:text-5xl"
+            className="max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
           >
             What would you like to design?
           </motion.h1>
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
             Describe the elastic or tape you need in plain language, preview it in real time, and
             send it straight to our technical team for review — no manufacturing jargon required.
           </p>
@@ -86,8 +83,8 @@ export default function StudioSelect() {
       </section>
 
       {/* Studio cards */}
-      <section className="mx-auto max-w-5xl px-6 py-12">
-        <div className="grid gap-6 sm:grid-cols-2">
+      <section className="mx-auto max-w-6xl px-6 pt-6 pb-12">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {STUDIO_CARDS.map((card, i) => (
             <motion.button
               key={card.slug}
@@ -98,7 +95,7 @@ export default function StudioSelect() {
               onClick={() => navigate(`/studio/${card.slug}`)}
               className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
             >
-              <div className="relative h-44 overflow-hidden bg-slate-900">
+              <div className="relative h-40 overflow-hidden bg-slate-900 lg:h-32">
                 <img
                   src={card.image}
                   alt={card.label}
@@ -134,7 +131,7 @@ export default function StudioSelect() {
       </section>
 
       {/* Saved designs */}
-      <section className="mx-auto max-w-5xl px-6 pb-20">
+      <section className="mx-auto max-w-6xl px-6 pb-20">
         <h2 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
           <FolderOpen className="w-4 h-4" /> Your saved designs
         </h2>
