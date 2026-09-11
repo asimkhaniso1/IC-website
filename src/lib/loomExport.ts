@@ -36,9 +36,12 @@ import JSZip from 'jszip';
 import { TECHNICAL_FIELD_DEFS } from '../pages/admin/components/ProductionSpecPanel';
 import { FAMILY_BY_CODE } from './constants';
 import { revisionLabel } from './ids';
-import { hexToRgb } from './color';
 import { colorLabel } from '../studio/color/naming';
 import type { DesignSpec, JacquardSpec, KnittedSpec, ProductionSpec, WovenSpec } from './types';
+import { buildJacquardPalette, buildPatternGridCanvas, type PaletteEntry } from './jacquardGraph';
+
+export { buildJacquardPalette } from './jacquardGraph';
+export type { PaletteEntry } from './jacquardGraph';
 
 export class LoomExportError extends Error {}
 
@@ -170,160 +173,6 @@ export function buildLoomDataCsv(
 // Pattern grid — Jacquard only, requires ends/cm + picks/cm + a rendered PNG
 // ---------------------------------------------------------------------------
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new LoomExportError('Could not decode an artwork image.'));
-    img.src = src;
-  });
-}
-
-/** Draws `img` centered in a w×h box, preserving aspect ratio (letterboxed) — matches the on-screen SVG preview's `preserveAspectRatio="xMidYMid meet"`. */
-function drawContain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number): void {
-  const iw = img.naturalWidth || 1;
-  const ih = img.naturalHeight || 1;
-  const scale = Math.min(w / iw, h / ih);
-  const dw = iw * scale;
-  const dh = ih * scale;
-  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-}
-
-/**
- * Renders exactly one repeat cell of the jacquard artwork, independent of
- * whatever mode/zoom is currently on screen — self-contained from the spec,
- * so the export is correct no matter what the studio is showing when the
- * admin clicks export. Coordinate system matches the on-screen strip: x runs
- * along the repeat length, y runs across the fabric width.
- */
-async function renderJacquardCellCanvas(spec: JacquardSpec, pxPerMm: number): Promise<HTMLCanvasElement> {
-  const lengthPx = Math.max(1, Math.round(spec.repeat.lengthMm * pxPerMm));
-  const widthPx = Math.max(1, Math.round(spec.widthMm * pxPerMm));
-  const canvas = document.createElement('canvas');
-  canvas.width = lengthPx;
-  canvas.height = widthPx;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new LoomExportError('Canvas is not available in this browser.');
-
-  ctx.fillStyle = spec.baseColor;
-  ctx.fillRect(0, 0, lengthPx, widthPx);
-
-  if (document.fonts?.ready) {
-    try {
-      await document.fonts.ready;
-    } catch {
-      /* fonts API not fully supported — proceed with whatever is loaded */
-    }
-  }
-
-  const cellCenterX = (spec.repeat.lengthMm / 2) * pxPerMm;
-  const cellCenterY = (spec.widthMm / 2) * pxPerMm;
-
-  for (const item of spec.artwork) {
-    const cx = cellCenterX + item.transform.xMm * pxPerMm;
-    const cy = cellCenterY + item.transform.yMm * pxPerMm;
-    const w = item.transform.widthMm * pxPerMm;
-    const h = item.transform.heightMm * pxPerMm;
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate((item.transform.rotationDeg * Math.PI) / 180);
-    ctx.scale(item.transform.mirrored ? -1 : 1, 1);
-
-    if (item.kind === 'image' && item.dataUrl) {
-      try {
-        const img = await loadImage(item.dataUrl);
-        drawContain(ctx, img, w, h);
-      } catch {
-        /* skip an artwork item that fails to decode rather than aborting the export */
-      }
-    } else if (item.kind === 'text' && item.text) {
-      const fontPx = h * 0.82;
-      ctx.font = `${item.fontWeight ?? 700} ${fontPx}px ${item.fontFamily ?? 'Inter, sans-serif'}`;
-      ctx.fillStyle = item.color;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      // Match the SVG preview's textLength fix: scale horizontally so the
-      // rendered text exactly fills its declared width box.
-      const measured = ctx.measureText(item.text).width || 1;
-      const scaleX = w / measured;
-      ctx.scale(scaleX, 1);
-      ctx.fillText(item.text, 0, 0);
-    }
-
-    ctx.restore();
-  }
-
-  return canvas;
-}
-
-export interface PaletteEntry {
-  hex: string;
-  /** Which part of the design this color plays — e.g. "Base / Ground", "Motif". */
-  role: string;
-  /** Yarn shade / Pantone name, e.g. "Navy (IC-003)". */
-  label: string;
-}
-
-/**
- * The design's actual declared yarn colors, deduplicated — this IS the loom's
- * available color set. A jacquard loom cannot weave an arbitrary blended
- * shade; every warp end and weft pick is one of these colors or none at all.
- */
-export function buildJacquardPalette(spec: JacquardSpec): PaletteEntry[] {
-  const entries: PaletteEntry[] = [];
-  const seen = new Set<string>();
-  const add = (hex: string | undefined, role: string) => {
-    if (!hex) return;
-    const norm = hex.trim().toLowerCase();
-    if (seen.has(norm)) return;
-    seen.add(norm);
-    entries.push({ hex, role, label: colorLabel(hex) });
-  };
-  add(spec.baseColor, 'Base / Ground');
-  add(spec.fg, 'Motif');
-  add(spec.secondaryColor, 'Secondary');
-  add(spec.accentColor, 'Accent');
-  add(spec.edgeColor, 'Edge');
-  (spec.additionalColors ?? []).forEach((c, i) => add(c, `Additional ${i + 1}`));
-  return entries;
-}
-
-/**
- * Snaps every pixel of `canvas` to the nearest color in `palette` (by RGB
- * distance). Without this, a smooth image resize leaves blended/anti-aliased
- * shades at every edge — colors that don't correspond to any actual yarn and
- * can't physically be woven. The quantized result is a true discrete design
- * graph: every cell is exactly one real color, or none (transparent).
- */
-function quantizeToPalette(canvas: HTMLCanvasElement, palette: PaletteEntry[]): void {
-  const ctx = canvas.getContext('2d');
-  if (!ctx || palette.length === 0) return;
-  const rgbPalette = palette
-    .map((p) => ({ ...hexToRgb(p.hex), hex: p.hex }))
-    .filter((p): p is { r: number; g: number; b: number; hex: string } => p.r !== undefined);
-  if (rgbPalette.length === 0) return;
-
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const px = imageData.data;
-  for (let i = 0; i < px.length; i += 4) {
-    if (px[i + 3] === 0) continue; // leave fully transparent pixels alone
-    let best = rgbPalette[0];
-    let bestDist = Infinity;
-    for (const c of rgbPalette) {
-      const d = (px[i] - c.r) ** 2 + (px[i + 1] - c.g) ** 2 + (px[i + 2] - c.b) ** 2;
-      if (d < bestDist) {
-        bestDist = d;
-        best = c;
-      }
-    }
-    px[i] = best.r;
-    px[i + 1] = best.g;
-    px[i + 2] = best.b;
-  }
-  ctx.putImageData(imageData, 0, 0);
-}
-
 /**
  * Encodes `canvas` as an uncompressed 24-bit BMP — no PNG-style compression,
  * which makes it the format most basic embedded jacquard controllers can
@@ -397,23 +246,15 @@ export async function buildPatternGridPngs(
   endsPerCm: number,
   picksPerCm: number
 ): Promise<{ dataGridPng: string; previewPng: string; gridBmp: Blob; cols: number; rows: number }> {
-  const cols = Math.max(1, Math.round((spec.repeat.lengthMm / 10) * picksPerCm));
-  const rows = Math.max(1, Math.round((spec.widthMm / 10) * endsPerCm));
-  if (cols > 4000 || rows > 4000) {
-    throw new LoomExportError('The computed pattern grid is unreasonably large — check the density values.');
+  let raw: HTMLCanvasElement;
+  try {
+    raw = await buildPatternGridCanvas(spec, endsPerCm, picksPerCm);
+  } catch (err) {
+    throw err instanceof LoomExportError
+      ? err
+      : new LoomExportError(err instanceof Error ? err.message : 'Could not build the pattern grid.');
   }
-
-  const cell = await renderJacquardCellCanvas(spec, 8);
-  const palette = buildJacquardPalette(spec);
-
-  const raw = document.createElement('canvas');
-  raw.width = cols;
-  raw.height = rows;
-  const rctx = raw.getContext('2d');
-  if (!rctx) throw new LoomExportError('Canvas is not available in this browser.');
-  rctx.imageSmoothingEnabled = true;
-  rctx.drawImage(cell, 0, 0, raw.width, raw.height);
-  quantizeToPalette(raw, palette);
+  const { width: cols, height: rows } = raw;
   const dataGridPng = raw.toDataURL('image/png');
   const gridBmp = canvasToBmpBlob(raw);
 

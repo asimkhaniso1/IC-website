@@ -19,6 +19,7 @@ import type {
   WovenSpec,
 } from '../lib/types';
 import FabricPreview from '../studio/preview/index';
+import WeaveGraphView from '../studio/preview/WeaveGraphView';
 import { jacquardDesigner } from '../studio/designers/jacquard/index';
 import { knittedDesigner } from '../studio/designers/knitted/index';
 import { wovenDesigner } from '../studio/designers/woven/index';
@@ -85,11 +86,15 @@ function createDefaultSpecFor(slug: FamilySlug): DesignSpec {
   }
 }
 
-const MODES: { value: PreviewMode; label: string }[] = [
+/** Preview tabs. 'graph' is studio-only (jacquard weave graph), not a FabricPreview mode. */
+type StudioMode = PreviewMode | 'graph';
+
+const MODES: { value: StudioMode; label: string; jacquardOnly?: boolean }[] = [
   { value: 'flat', label: 'Flat' },
   { value: 'roll', label: 'Roll' },
   { value: 'repeat', label: 'Repeat' },
   { value: 'application', label: 'Application' },
+  { value: 'graph', label: 'Graph', jacquardOnly: true },
 ];
 
 type AiPhotoState =
@@ -216,7 +221,7 @@ function DesignerWorkspace({
 }) {
   const { spec, setSpec, replace, undo, redo, canUndo, canRedo } = useDesignHistory(initialSpec);
   const [record, setRecord] = useState<DesignRecord | null>(initialRecord);
-  const [mode, setMode] = useState<PreviewMode>('flat');
+  const [mode, setMode] = useState<StudioMode>('flat');
   const [showGrid, setShowGrid] = useState(true);
   const [showRuler, setShowRuler] = useState(true);
   const capabilities = useCapabilities();
@@ -342,13 +347,13 @@ function DesignerWorkspace({
       preview={
         <div className="flex h-full min-h-0 flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex rounded-lg border border-slate-200 bg-white p-1">
-              {MODES.map((m) => (
+            <div className="flex max-w-full overflow-x-auto rounded-lg border border-slate-200 bg-white p-1">
+              {MODES.filter((m) => !m.jacquardOnly || familySlug === 'jacquard').map((m) => (
                 <button
                   key={m.value}
                   type="button"
                   onClick={() => setMode(m.value)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+                  className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
                     mode === m.value ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'
                   }`}
                 >
@@ -378,9 +383,14 @@ function DesignerWorkspace({
             </div>
           </div>
           <div className="flex min-h-0 flex-1">
+            {mode === 'graph' && familySlug === 'jacquard' && (
+              <WeaveGraphView spec={spec as JacquardSpec} showGrid={showGrid} className="w-full" />
+            )}
+            {/* Stays mounted (hidden) in Graph view: AI Photo, AI review and the spec PDF rasterize it via previewRef. */}
+            <div className={mode === 'graph' ? 'hidden' : 'flex min-h-0 flex-1'}>
             <FabricPreview
               spec={spec}
-              mode={mode}
+              mode={mode === 'graph' ? 'flat' : mode}
               showGrid={showGrid}
               showRuler={showRuler}
               interactive={familySlug === 'jacquard'}
@@ -388,6 +398,7 @@ function DesignerWorkspace({
               previewRef={previewRef}
               className="w-full"
             />
+            </div>
           </div>
         </div>
       }
