@@ -45,6 +45,15 @@ export default function StudioSelect() {
       {/* Hero */}
       {/* Kept compact so all four design options are visible without scrolling on a laptop screen. */}
       <section className="relative overflow-hidden bg-slate-950 px-6 py-7 sm:py-8">
+        {/* Faded brand image (graph turning into jacquard weave); the gradient keeps the text on the left readable. */}
+        <img
+          src="/images/hf/jacquard-graph-to-weave.webp"
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[70%_50%] opacity-40"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/30" />
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{
