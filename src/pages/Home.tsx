@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Download,
   Factory,
   Zap,
   Globe
@@ -222,11 +223,10 @@ const HeroSlider = () => {
               Explore Products <ArrowRight className="w-5 h-5" />
             </a>
             <a
-              href="/documents/IC-Profile-2024.pdf"
-              download
+              href="/studio"
               className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg font-bold transition-all text-center backdrop-blur-sm flex items-center justify-center gap-2"
             >
-              Download Profile
+              Design Studio
             </a>
             <a
               href="#contact"
@@ -252,7 +252,7 @@ const HeroSlider = () => {
       {/* Floating Stats */}
       <div className="absolute bottom-12 right-6 md:right-12 z-10 hidden lg:flex gap-12">
         {[
-          { label: 'Employees', value: '50+' },
+          { label: 'Certified', value: 'OEKO-TEX® 100' },
           { label: 'Capabilities', value: 'ISO 9001' },
           { label: 'Location', value: 'Karachi' },
         ].map((stat, i) => (
@@ -551,6 +551,16 @@ export default function Home() {
                     <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
                   </div>
                 ))}
+              </div>
+
+              <div>
+                <a
+                  href="/documents/IC-Profile-2024.pdf"
+                  download
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#004A99] hover:bg-blue-700 text-white rounded-lg font-bold transition-all shadow-lg shadow-blue-900/10"
+                >
+                  <Download className="w-5 h-5" /> Download Profile
+                </a>
               </div>
             </div>
           </div>
