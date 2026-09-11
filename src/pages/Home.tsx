@@ -23,6 +23,7 @@ import {
   Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { QuickQuoteDialog } from '../rfq/QuickQuoteDialog';
 
 const COLORS = {
   primary: '#004A99', // Professional Blue from Logo
@@ -269,6 +270,7 @@ const HeroSlider = () => {
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isQuoteOpen, setIsQuoteOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -276,12 +278,12 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Trimmed to the essentials — "About"/"Quality" stayed reachable by
+  // scrolling the page itself, but crowded the bar once "Request a Quote"
+  // joined it as a button.
   const navLinks = [
-    { name: 'Home', href: '#home' },
-    { name: 'About', href: '#about' },
     { name: 'Products', href: '#products' },
     { name: 'Design Studio', href: '/studio' },
-    { name: 'Quality', href: '#quality' },
     { name: 'Contact', href: '#contact' },
   ];
 
@@ -302,7 +304,7 @@ const Navbar = () => {
         </div>
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex gap-8">
+        <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
             <a
               key={link.name}
@@ -312,6 +314,13 @@ const Navbar = () => {
               {link.name}
             </a>
           ))}
+          <button
+            type="button"
+            onClick={() => setIsQuoteOpen(true)}
+            className="px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-widest bg-[#004A99] text-white hover:bg-[#00397a] transition-colors"
+          >
+            Request a Quote
+          </button>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -346,9 +355,21 @@ const Navbar = () => {
                 {link.name}
               </a>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsQuoteOpen(true);
+              }}
+              className="px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-widest bg-[#004A99] text-white"
+            >
+              Request a Quote
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <QuickQuoteDialog open={isQuoteOpen} onClose={() => setIsQuoteOpen(false)} />
     </nav>
   );
 };

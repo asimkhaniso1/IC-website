@@ -52,6 +52,8 @@ const FIELD_LABELS: Record<string, string> = {
   targetDate: 'Target date',
   subject: 'Subject',
   message: 'Message',
+  oekoTex100: 'OEKO-TEX Standard 100 required',
+  artwork: 'Artwork uploaded',
 };
 /** Internal/duplicate keys never shown in the email body. */
 const HIDDEN_KEYS = new Set(['_hp', 'firstName', 'lastName', 'designUrl']);

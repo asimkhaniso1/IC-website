@@ -146,6 +146,14 @@ export interface BaseSpec {
   edgeStyle: EdgeStyle;
   application: Application;
   notes?: string;
+  /**
+   * Customer-supplied reference logo/artwork attached at request time (e.g.
+   * via the direct "Request a Quote" flow, which has no Studio canvas to
+   * place it on). Jacquard designs ALSO get it placed as a proper
+   * `artwork` item; this flat copy is a quick reference for every family
+   * and is never itself rendered into the weave/preview.
+   */
+  referenceArtworkDataUrl?: string;
   /** Optional customer-entered advanced details (collapsed section). */
   technical?: TechnicalDetails;
 }
