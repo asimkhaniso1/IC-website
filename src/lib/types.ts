@@ -309,6 +309,8 @@ export interface RfqInput {
   targetDate?: string;
   application?: string;
   message?: string;
+  /** Whether the customer needs OEKO-TEX Standard 100 certified quality on this order/sample. */
+  oekoTex100?: boolean;
 }
 
 export interface RfqResult {

@@ -145,7 +145,7 @@ export const supabaseAdapter: StorageAdapter = {
       return { ok: false, reason: 'Supabase is not configured.' };
     }
     try {
-      const { data, error } = await supabase.rpc('submit_rfq', {
+      const { data, error } = await supabase.rpc('submit_rfq_v2', {
         p_project: input.designId,
         p_token: ownerToken(),
         p_rfq: input,

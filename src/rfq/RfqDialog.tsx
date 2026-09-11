@@ -21,6 +21,7 @@ interface FormState {
   targetDate: string;
   application: string;
   message: string;
+  oekoTex100: boolean;
 }
 
 function specColors(spec: DesignSpec): string[] {
@@ -46,6 +47,7 @@ function initialForm(spec: DesignSpec): FormState {
     targetDate: '',
     application: spec.application,
     message: '',
+    oekoTex100: false,
   };
 }
 
@@ -140,6 +142,7 @@ export const RfqDialog: React.FC<RfqDialogProps> = ({
       targetDate: form.targetDate || undefined,
       application: form.application || undefined,
       message: form.message.trim() || undefined,
+      oekoTex100: form.oekoTex100,
     };
 
     try {
@@ -169,6 +172,7 @@ export const RfqDialog: React.FC<RfqDialogProps> = ({
               targetPrice: input.targetPrice ?? '',
               targetDate: input.targetDate ?? '',
               message: input.message ?? '',
+              oekoTex100: input.oekoTex100 ? 'Yes' : 'No',
             },
           }),
         }).catch(() => undefined);
@@ -408,6 +412,19 @@ export const RfqDialog: React.FC<RfqDialogProps> = ({
               />
             </Field>
           </div>
+
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="mt-0.5 accent-brand-600"
+              checked={form.oekoTex100}
+              onChange={(e) => set('oekoTex100', e.target.checked)}
+            />
+            <span>
+              Requires <b>OEKO-TEX Standard 100</b> certified quality
+              <span className="block text-xs text-slate-400">Tell us upfront if this order/sample needs OEKO-TEX certified yarn and finishing.</span>
+            </span>
+          </label>
 
           <Field label="Message / Special Requirements" htmlFor="rfq-message">
             <TextArea
