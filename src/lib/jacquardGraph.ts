@@ -164,6 +164,14 @@ function quantizeToPalette(canvas: HTMLCanvasElement, palette: PaletteEntry[]): 
   ctx.putImageData(imageData, 0, 0);
 }
 
+/**
+ * Nominal densities for customer-facing graphs (studio Graph view, spec sheet
+ * PDF) — mid-range for narrow jacquard elastics. The approved production
+ * densities are set later by the technical team.
+ */
+export const NOMINAL_ENDS_PER_CM = 40;
+export const NOMINAL_PICKS_PER_CM = 30;
+
 /** Cells in one repeat: columns are weft picks along the repeat length, rows are warp ends across the width. */
 export function patternGridSize(spec: JacquardSpec, endsPerCm: number, picksPerCm: number): { cols: number; rows: number } {
   return {
@@ -288,4 +296,35 @@ export async function buildGraphPalette(spec: JacquardSpec): Promise<PaletteEntr
     palette.push({ hex, role: `Logo colour ${n}`, label: colorLabel(hex) });
   }
   return palette;
+}
+
+/**
+ * Printable, enlarged copy of a one-pixel-per-cell grid, drawn like jacquard
+ * point paper: nearest-neighbor scaled, a thin line per thread when cells are
+ * big enough, and a bold line every 10 threads. Returns a PNG data URL.
+ */
+export function renderGraphPng(raw: HTMLCanvasElement, maxPx = 1800): string {
+  const cols = raw.width;
+  const rows = raw.height;
+  const cell = Math.max(1, Math.min(10, Math.floor(maxPx / Math.max(cols, rows))));
+  const out = document.createElement('canvas');
+  out.width = cols * cell + 1;
+  out.height = rows * cell + 1;
+  const ctx = out.getContext('2d');
+  if (!ctx) throw new Error('Canvas is not available in this browser.');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(raw, 0, 0, cols * cell, rows * cell);
+  if (cell >= 4) {
+    ctx.fillStyle = 'rgba(100, 116, 139, 0.35)';
+    for (let x = 0; x <= cols; x++) ctx.fillRect(x * cell, 0, 1, out.height);
+    for (let y = 0; y <= rows; y++) ctx.fillRect(0, y * cell, out.width, 1);
+  }
+  ctx.fillStyle = 'rgba(71, 85, 105, 0.85)';
+  for (let x = 0; x <= cols; x += 10) ctx.fillRect(x * cell, 0, 1, out.height);
+  for (let y = 0; y <= rows; y += 10) ctx.fillRect(0, y * cell, out.width, 1);
+  ctx.fillRect(cols * cell, 0, 1, out.height);
+  ctx.fillRect(0, rows * cell, out.width, 1);
+  return out.toDataURL('image/png');
 }

@@ -27,6 +27,14 @@ import { revisionLabel } from '../lib/ids';
 import { mmToIn } from '../lib/units';
 import { hexToRgb } from '../lib/color';
 import { describeColor } from '../studio/color/naming';
+import {
+  buildGraphPalette,
+  buildPatternGridCanvas,
+  NOMINAL_ENDS_PER_CM,
+  NOMINAL_PICKS_PER_CM,
+  renderGraphPng,
+  type PaletteEntry,
+} from '../lib/jacquardGraph';
 import { qrDataUrl } from './qr';
 
 /** "standard" → "Standard" for cleaner presentation of enum-ish values. */
@@ -845,6 +853,7 @@ export async function generateSpecPdf(
   if (extras?.aiPhoto) {
     y = await drawAiPhoto(doc, y, extras.aiPhoto);
   }
+  y = await drawWeaveGraph(doc, y, rec.spec);
   y = drawSpecTable(doc, y, rec.spec);
   y = drawCustomerTechnicalInput(doc, y, rec.spec.technical);
   y = drawWeavability(doc, y, rec.weavability);
@@ -857,6 +866,88 @@ export async function generateSpecPdf(
   stampFooters(doc);
 
   return doc.output('blob');
+}
+
+// ---------------------------------------------------------------------------
+// Jacquard weave graph — same grid, palette and nominal density as the
+// studio's Graph tab, so the sheet and the screen always agree.
+// ---------------------------------------------------------------------------
+
+const WEAVE_GRAPH_CAPTION =
+  'Indicative weave graph — one square per warp end × weft pick at nominal density. Uploaded logos keep their own colours. ' +
+  'The Interconverters technical team prepares the final loom graph from the approved production specification.';
+
+async function drawWeaveGraph(doc: jsPDF, y: number, spec: DesignSpec): Promise<number> {
+  if (spec.family !== 'J') return y;
+  const j = spec as JacquardSpec;
+  if (j.artwork.length === 0) return y;
+
+  let png: string;
+  let cols: number;
+  let rows: number;
+  let palette: PaletteEntry[];
+  try {
+    palette = await buildGraphPalette(j);
+    const raw = await buildPatternGridCanvas(j, NOMINAL_ENDS_PER_CM, NOMINAL_PICKS_PER_CM, palette);
+    cols = raw.width;
+    rows = raw.height;
+    png = renderGraphPng(raw);
+  } catch {
+    return y; // skip the section rather than print a broken frame
+  }
+
+  const maxW = 170;
+  const maxH = 105;
+  const pad = 4;
+  const fit = Math.min((maxW - pad * 2) / cols, (maxH - pad * 2) / rows);
+  const imgW = cols * fit;
+  const imgH = rows * fit;
+  const boxH = imgH + pad * 2;
+  const keyRows = Math.ceil(palette.length / 3);
+
+  // Keep header, graph and key together on one page.
+  y = pageBreakIfNeeded(doc, y, boxH + keyRows * 4.5 + 34);
+  y = sectionHeader(doc, y, 'Weave Graph');
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...SLATE_600);
+  const stats = doc.splitTextToSize(
+    `${rows} warp ends × ${cols} weft picks  ·  one ${j.repeat.lengthMm} mm repeat  ·  nominal ` +
+      `${NOMINAL_ENDS_PER_CM} ends/cm × ${NOMINAL_PICKS_PER_CM} picks/cm  ·  bold lines every 10 threads`,
+    CONTENT_W
+  ) as string[];
+  doc.text(stats, CONTENT_X, y);
+  y += stats.length * 3.6 + 1;
+
+  const boxX = CONTENT_X + (CONTENT_W - maxW) / 2;
+  doc.setDrawColor(...SLATE_300);
+  doc.setLineWidth(0.3);
+  doc.setFillColor(255, 255, 255);
+  doc.rect(boxX, y, maxW, boxH, 'FD');
+  doc.addImage(png, 'PNG', boxX + (maxW - imgW) / 2, y + pad, imgW, imgH);
+  y += boxH + 5;
+
+  const colW = CONTENT_W / 3;
+  palette.forEach((entry, i) => {
+    const lx = CONTENT_X + (i % 3) * colW;
+    const ly = y + Math.floor(i / 3) * 4.5;
+    doc.setFillColor(...safeRgb(entry.hex));
+    doc.setDrawColor(...SLATE_300);
+    doc.rect(lx, ly - 2.6, 3, 3, 'FD');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.6);
+    doc.setTextColor(...SLATE_900);
+    doc.text(`${entry.role} — ${entry.label}`, lx + 4.5, ly, { maxWidth: colW - 6 });
+  });
+  y += keyRows * 4.5 + 1.5;
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(6.6);
+  doc.setTextColor(...SLATE_400);
+  const capLines = doc.splitTextToSize(WEAVE_GRAPH_CAPTION, CONTENT_W) as string[];
+  doc.text(capLines, CONTENT_X, y);
+  return y + capLines.length * 3.1 + 5;
 }
 
 // ---------------------------------------------------------------------------
@@ -911,7 +1002,8 @@ function drawAiReview(doc: jsPDF, y: number, review: AiReviewResult): number {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
   doc.setTextColor(...color);
-  doc.text(`AI assessment: ${FEASIBILITY_LABEL[review.level]}`, CONTENT_X, y);
+  // The level is the rule-based manufacturing check (same as the Weavability section); the AI adds notes.
+  doc.text(`Assessment (manufacturing rules): ${FEASIBILITY_LABEL[review.level]}`, CONTENT_X, y);
   y += 6;
 
   if (review.summary) {

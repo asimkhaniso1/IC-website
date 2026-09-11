@@ -86,6 +86,13 @@ function createDefaultSpecFor(slug: FamilySlug): DesignSpec {
   }
 }
 
+/** Stable identity of a design for the AI review cache (artwork data URLs abbreviated). */
+function aiReviewKey(spec: DesignSpec): string {
+  return JSON.stringify(spec, (key, value: unknown) =>
+    key === 'dataUrl' && typeof value === 'string' ? `${value.length}:${value.slice(-64)}` : value
+  );
+}
+
 /** Preview tabs. 'graph' is studio-only (jacquard weave graph), not a FabricPreview mode. */
 type StudioMode = PreviewMode | 'graph';
 
@@ -229,6 +236,11 @@ function DesignerWorkspace({
     checkWeavability(initialSpec)
   );
   const previewRef = useRef<PreviewHandle | null>(null);
+  // AI review, AI photo and the spec PDF all use one canonical render (flat, no
+  // grid/ruler/handles) whatever tab or toggle is on screen; an unchanged design
+  // is only sent to the AI review once.
+  const reviewRef = useRef<PreviewHandle | null>(null);
+  const aiReviewCache = useRef(new Map<string, { level: Feasibility; issues: WeavabilityIssue[]; summary: string }>());
 
   useEffect(() => {
     const t = setTimeout(() => setWeavability(checkWeavability(spec, capabilities[spec.family])), 400);
@@ -263,7 +275,7 @@ function DesignerWorkspace({
     }
     setAiPhoto({ status: 'loading' });
     try {
-      const png = await previewRef.current?.toPngDataUrl(3);
+      const png = await reviewRef.current?.toPngDataUrl(3);
       if (!png) throw new Error('Preview is not ready yet.');
       const { image } = await renderFabricPhoto(png, spec);
       setRenderCount(bumpRenderCount(renderKey));
@@ -287,14 +299,26 @@ function DesignerWorkspace({
   }
 
   async function runAiReview() {
+    // One source of truth: the overall level is the rule-based check (the same
+    // one behind the header badge); the AI only adds advisory notes to it.
+    const familyCapabilities = capabilities[spec.family];
+    const ruleCheck = checkWeavability(spec, familyCapabilities);
+    const cacheKey = `${ruleCheck.level}|${JSON.stringify(familyCapabilities)}|${aiReviewKey(spec)}`;
+    const cached = aiReviewCache.current.get(cacheKey);
+    if (cached) {
+      setAiReview({ status: 'ready', ...cached });
+      return;
+    }
     setAiReview({ status: 'loading' });
     try {
       // The rendered preview is the source of truth for uploaded artwork.
       // Its intrinsic aspect ratio and colors cannot be inferred reliably from
       // the transform box or the generic motif color in the design JSON.
-      const artworkThumb = await previewRef.current?.toPngDataUrl(1);
-      const result = await analyzeDesignAi(spec, artworkThumb);
-      setAiReview({ status: 'ready', ...result });
+      const artworkThumb = await reviewRef.current?.toPngDataUrl(1);
+      const result = await analyzeDesignAi(spec, artworkThumb, ruleCheck, familyCapabilities);
+      const review = { ...result, level: ruleCheck.level };
+      aiReviewCache.current.set(cacheKey, review);
+      setAiReview({ status: 'ready', ...review });
     } catch (err) {
       if (err instanceof AiUnavailableError) {
         setAiReview({ status: 'error', message: err.message, unavailable: err.reason === 'not_configured' });
@@ -329,7 +353,7 @@ function DesignerWorkspace({
           canUndo={canUndo}
           canRedo={canRedo}
           onReset={() => replace(createDefaultSpecFor(familySlug))}
-          previewRef={previewRef}
+          previewRef={reviewRef}
           aiReview={aiReview.status === 'ready' ? aiReview : undefined}
           aiPhoto={aiPhoto.status === 'ready' ? aiPhoto.image : undefined}
         />
@@ -386,7 +410,7 @@ function DesignerWorkspace({
             {mode === 'graph' && familySlug === 'jacquard' && (
               <WeaveGraphView spec={spec as JacquardSpec} showGrid={showGrid} className="w-full" />
             )}
-            {/* Stays mounted (hidden) in Graph view: AI Photo, AI review and the spec PDF rasterize it via previewRef. */}
+            {/* Stays mounted (hidden) in Graph view so its zoom and stretch state survive a tab switch. */}
             <div className={mode === 'graph' ? 'hidden' : 'flex min-h-0 flex-1'}>
             <FabricPreview
               spec={spec}
@@ -398,6 +422,10 @@ function DesignerWorkspace({
               previewRef={previewRef}
               className="w-full"
             />
+            </div>
+            {/* Canonical render for AI review, AI photo and the spec PDF: always flat, no grid/ruler/selection handles. */}
+            <div className="hidden" aria-hidden="true">
+              <FabricPreview spec={spec} mode="flat" previewRef={reviewRef} />
             </div>
           </div>
         </div>

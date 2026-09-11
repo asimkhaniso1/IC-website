@@ -18,13 +18,11 @@ import {
   buildGraphPalette,
   buildJacquardPalette,
   buildPatternGridCanvas,
+  NOMINAL_ENDS_PER_CM as PREVIEW_ENDS_PER_CM,
+  NOMINAL_PICKS_PER_CM as PREVIEW_PICKS_PER_CM,
   patternGridSize,
   type PaletteEntry,
 } from '../../lib/jacquardGraph';
-
-/** Nominal preview densities — mid-range for narrow jacquard elastics. */
-export const PREVIEW_ENDS_PER_CM = 40;
-export const PREVIEW_PICKS_PER_CM = 30;
 
 const STAGE_PAD = 16;
 /** Smallest on-screen cell (px) at which single-thread lines are drawn. */

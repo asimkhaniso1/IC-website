@@ -10,7 +10,11 @@
  *
  * Server-side only — process.env.GEMINI_API_KEY never reaches the client.
  *
- * Request:  { spec: DesignSpec, artworkThumb?: string (small data URL) }
+ * Request:  { spec: DesignSpec, artworkThumb?: string (small data URL),
+ *            ruleCheck?: WeavabilityResult, capabilities?: FamilyCapabilities }
+ *           When ruleCheck is sent, its level is returned unchanged (one source
+ *           of truth with the studio's badge); the AI only adds advisory notes,
+ *           judged against the factory's machine capability library.
  * Response: { level, issues, summary }  |  { error: AiErrorCode, message?: string }
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -36,6 +40,10 @@ const MAX_THUMB_BYTES = 500 * 1024; // ~500 KB
 interface AnalyzeRequestBody {
   spec?: DesignSpec;
   artworkThumb?: string;
+  /** The studio's rule-based weavability result — authoritative for the overall level. */
+  ruleCheck?: { level?: string; issues?: AiIssue[] };
+  /** The factory's machine capability library for this product family (admin-editable). */
+  capabilities?: Record<string, unknown>;
 }
 
 interface AiIssue {
@@ -66,6 +74,12 @@ const SYSTEM_INSTRUCTION = [
   'You MUST NOT claim, imply or suggest that this design is "approved for production" or manufacturing-final. ' +
     'Your output is always a non-binding advisory opinion; final manufacturability is decided by the ' +
     "factory's technical review team against a physical sample.",
+  'When the factory machine capability library is supplied, it describes what our machines can actually make ' +
+    '(widths, color counts, constructions, elongation, minimum text size and similar limits). Judge the design ' +
+    'only against those limits and never flag something the capability library allows as a problem.',
+  'When an automated rule-based check result is supplied, it is the single source of truth for the overall ' +
+    'feasibility: set "level" to exactly that value and never contradict it. Add only complementary observations ' +
+    'the rules cannot see (readability, contrast, visual balance) and do not repeat the rule findings.',
   'Respond ONLY with strict JSON matching the provided schema. No markdown, no prose outside the JSON.',
 ].join(' ');
 
@@ -148,16 +162,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     artworkPart = parsed;
   }
 
-  const promptText = [
+  const promptText: string[] = [
     'Review this narrow fabric design for manufacturability and give advisory, design-level feedback only.',
     'Design JSON:',
     '```json',
     JSON.stringify(specForPrompt(spec), null, 2),
     '```',
-  ].join('\n');
+  ];
+  if (body?.capabilities && typeof body.capabilities === 'object') {
+    promptText.push(
+      'Factory machine capability library for this product family (our actual machine limits):',
+      '```json',
+      JSON.stringify(body.capabilities, null, 2),
+      '```'
+    );
+  }
+  const ruleLevel = isValidLevel(body?.ruleCheck?.level) ? body.ruleCheck.level : null;
+  if (ruleLevel) {
+    promptText.push(
+      'Automated rule-based check (authoritative for the overall level):',
+      '```json',
+      JSON.stringify({ level: ruleLevel, issues: body?.ruleCheck?.issues ?? [] }, null, 2),
+      '```'
+    );
+  }
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-    { text: promptText },
+    { text: promptText.join('\n') },
   ];
   if (artworkPart) {
     parts.push({ inlineData: { mimeType: artworkPart.mimeType, data: artworkPart.data } });
@@ -175,6 +206,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: 'application/json',
         responseSchema: RESPONSE_SCHEMA,
+        // Same design in, same review out — no sampling randomness.
+        temperature: 0,
       },
     });
 
@@ -192,7 +225,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
 
-    const level = isValidLevel(parsed.level) ? parsed.level : 'review';
+    // One source of truth: when the studio sent its rule-based result, that level wins.
+    const level = ruleLevel ?? (isValidLevel(parsed.level) ? parsed.level : 'review');
     const issues = Array.isArray(parsed.issues)
       ? parsed.issues
           .filter((i): i is AiIssue & { code: string; severity: string; message: string } =>
