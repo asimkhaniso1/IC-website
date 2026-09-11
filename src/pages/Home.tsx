@@ -249,7 +249,6 @@ const HeroSlider = () => {
         {[
           { label: 'Certified', value: 'OEKO-TEX® 100' },
           { label: 'Capabilities', value: 'ISO 9001' },
-          { label: 'Location', value: 'Karachi' },
         ].map((stat, i) => (
           <motion.div
             key={i}
