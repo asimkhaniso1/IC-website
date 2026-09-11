@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Interconverters Pvt. Ltd.</title>
     <link rel="icon" type="image/png" href="/images/LOGO1.png" />
+    <!-- Fonts: linked here (not @import in CSS) so the request starts with the HTML instead of after the CSS. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+    <!-- Hero video poster (first frame), fetched before the JS bundle renders the <video>. -->
+    <link rel="preload" as="image" type="image/webp" href="/video/hero-poster.webp" media="(min-width: 768px)" />
+    <link rel="preload" as="image" type="image/webp" href="/video/hero-poster-mobile.webp" media="(max-width: 767px)" />
   </head>
   <body>
     <div id="root"></div>

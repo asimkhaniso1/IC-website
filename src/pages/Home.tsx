@@ -49,22 +49,22 @@ const HeroSlider = () => {
   // video is off (reduced motion / Save-Data) or can't play.
   const slides = [
     {
-      image: '/images/4.jpg',
+      image: '/images/webp/4.webp',
       title: 'Quality Material Selection',
       subtitle: 'Cotton, Polyester, Aramid and other special yarns.'
     },
     {
-      image: '/images/5.jpg',
+      image: '/images/webp/5.webp',
       title: 'Jacquard Weaving',
       subtitle: 'Exquisite custom patterns and branding woven directly into high-quality elastic.'
     },
     {
-      image: '/images/1.jpg',
+      image: '/images/webp/1.webp',
       title: 'Precision Weaving',
       subtitle: 'Ultra-modern production facilities for individual textile solutions.'
     },
     {
-      image: '/images/3.jpg',
+      image: '/images/webp/3.webp',
       title: 'High-Tech Narrow Textiles',
       subtitle: 'Engineering excellence for extreme requirements.'
     },
@@ -74,7 +74,7 @@ const HeroSlider = () => {
       subtitle: 'Specialized knitted fabrics for technical borders and industrial reinforcement.'
     },
     {
-      image: '/images/2.jpg',
+      image: '/images/webp/2.webp',
       title: 'Premium Tapes & Braids',
       subtitle: 'Woven, elastic, and non-elastic solutions for global industries.'
     }
@@ -457,6 +457,8 @@ const ProductCard = ({ title, description, features, image }: { title: string, d
       <img
         src={image}
         alt={title}
+        loading="lazy"
+        decoding="async"
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         referrerPolicy="no-referrer"
       />
@@ -510,6 +512,8 @@ export default function Home() {
               <img
                 src="/images/a-2-crochet-machine-500x500.jpg"
                 alt="Our Facility"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-[500px] object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -682,31 +686,31 @@ export default function Home() {
               title="Hemming Strap"
               description="Woven, elastic, variable width and colour. Perfect for specialized garment edges."
               features={["2-coloured options", "Customer-specific finish", "Versatile"]}
-              image="/images/6.jpg"
+              image="/images/webp/6.webp"
             />
             <ProductCard
               title="Carrier Strap"
               description="Heavy-duty woven straps with elastic variable width and colour for demanding equipment."
               features={["Maximum safety", "High load capacity", "Technical equipment"]}
-              image="/images/7.jpg"
+              image="/images/webp/7.webp"
             />
             <ProductCard
               title="Braided Elastic with Buttonholes"
               description="Braided, elastic, slotted solutions carefully variable in width and colour."
               features={["Slotted structure", "Variable width", "Premium finish"]}
-              image="/images/8.jpg"
+              image="/images/webp/8.webp"
             />
             <ProductCard
               title="FlexiKlett"
               description="Woven, elastic, hook-and-loop-ready fastener capable tapes."
               features={["Hook-and-loop ready", "Customer-specific", "Variable colour"]}
-              image="/images/9.jpg"
+              image="/images/webp/9.webp"
             />
             <ProductCard
               title="Woven Form Tapes"
               description="Flame-retardant, slotted, perforated tapes with eyelets for ultimate flexibility."
               features={["Flame-retardant", "With eyelets", "Perforated design"]}
-              image="/images/5.jpg"
+              image="/images/webp/5.webp"
             />
             <ProductCard
               title="Grab Loops"
@@ -718,19 +722,19 @@ export default function Home() {
               title="Jacquard Woven Elastic"
               description="High-quality custom woven elastic with intricate patterns and branding."
               features={["Custom branding", "Jacquard patterns", "Durable stretch"]}
-              image="/images/1.jpg"
+              image="/images/webp/1.webp"
             />
             <ProductCard
               title="Normal Crochet Elastic"
               description="Standard breathable crochet elastic designed for varied garment applications."
               features={["Breathable", "Versatile design", "Consistent stretch"]}
-              image="/images/3.jpg"
+              image="/images/webp/3.webp"
             />
             <ProductCard
               title="Twill Tape"
               description="Strong woven twill tape ideal for binding, seams, and finishing edges with herringbone patterns."
               features={["Herringbone weave", "High strength", "Various widths"]}
-              image="/images/4.jpg"
+              image="/images/webp/4.webp"
             />
           </div>
         </div>
@@ -920,6 +924,8 @@ export default function Home() {
                   <img
                     src="/images/LOGO1.png"
                     alt="Interconverters Logo Footer"
+                    loading="lazy"
+                    decoding="async"
                     className="h-9 w-auto object-contain"
                     referrerPolicy="no-referrer"
                   />
