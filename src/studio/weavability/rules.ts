@@ -154,26 +154,29 @@ function checkJacquard(spec: JacquardSpec, cap: FamilyCapabilities, issues: Weav
     if (item.kind === 'image') {
       const { lengthMm: extentAlongLength, widthMm: extentAcrossWidth } = rotatedAxisExtents(item.transform);
 
+      // The loom weaves continuously along the running length, so there is
+      // no physical ceiling on artwork length or repeat length — the "repeat"
+      // is just how far along the tape the motif is set to recur, and the
+      // technical team sizes the actual loom card/repeat to match whatever
+      // the artwork needs. This is a setup nudge, not a manufacturability
+      // limit, so it stays informational and never triggers "Review
+      // Recommended" on its own.
       if (extentAlongLength > spec.repeat.lengthMm) {
         issues.push({
           code: 'artwork-exceeds-repeat',
-          severity: 'warn',
-          message: 'Artwork is wider than the repeat length — it may overlap the next repeat.',
-          hint: 'Widen the repeat length, reduce the artwork width, or reduce its rotation.',
-        });
-      }
-      if (spec.repeat.lengthMm < extentAlongLength + spec.repeat.spacingMm) {
-        issues.push({
-          code: 'repeat-dense',
           severity: 'info',
-          message: 'Repeat length is tight relative to artwork size and spacing.',
+          message: 'Artwork is longer than the current repeat length — it will overlap the next repeat as configured.',
+          hint: 'Widen the repeat length to fit the artwork (the loom repeat has no fixed maximum), or reduce the artwork width.',
         });
       }
+      // The tape/head width IS a hard physical limit (the reed width the
+      // artwork is woven across) — unlike repeat length, this genuinely
+      // cannot be exceeded, so it stays an error like checkWidth() above.
       if (extentAcrossWidth > spec.widthMm) {
         issues.push({
           code: 'artwork-exceeds-width',
-          severity: 'warn',
-          message: 'Artwork extends past the fabric width at this size and rotation.',
+          severity: 'error',
+          message: 'Artwork extends past the fabric/tape width at this size and rotation — this cannot be woven as configured.',
           hint: 'Reduce the artwork size or rotation, or increase the fabric width.',
         });
       }
