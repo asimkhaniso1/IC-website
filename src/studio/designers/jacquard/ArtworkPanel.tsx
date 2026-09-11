@@ -268,16 +268,15 @@ export function ArtworkPanel({
 
     // If the logo itself has a clear dominant color, let that drive the
     // motif color instead of leaving new artwork stuck on whatever fg
-    // happens to be set (often still the black default) — the previous
-    // motif color moves down to secondary rather than being discarded.
+    // happens to be set (often still the black default). Secondary color
+    // is never auto-populated — that stays an explicit "Add secondary
+    // color" action for the customer.
     let fg = spec.fg;
-    let secondaryColor = spec.secondaryColor;
     const dominant = await extractDominantColor(dataUrl, spec.baseColor);
     if (dominant) {
       const dominantRgb = hexToRgb(dominant);
       const fgRgb = hexToRgb(spec.fg);
       if (dominantRgb && fgRgb && rgbDistSq(dominantRgb, fgRgb) > MEANINGFUL_COLOR_DIFF_SQ) {
-        secondaryColor = spec.fg;
         fg = dominant;
       }
     }
@@ -296,7 +295,7 @@ export function ArtworkPanel({
         mirrored: false,
       },
     };
-    onChange({ ...spec, artwork: [...spec.artwork, item], fg, secondaryColor });
+    onChange({ ...spec, artwork: [...spec.artwork, item], fg });
     setActiveId(item.id);
     setLockAspect((m) => ({ ...m, [item.id]: true }));
   };
