@@ -11,6 +11,7 @@
 import { defaultCapabilities, type FamilyCapabilities } from '../../lib/capabilities';
 import { contrastRatio, normalizeHex } from '../../lib/color';
 import type {
+  ArtworkTransform,
   DesignSpec,
   Feasibility,
   JacquardSpec,
@@ -94,6 +95,27 @@ function checkContrast(fg: string, bg: string, label: string, issues: Weavabilit
   }
 }
 
+/**
+ * An artwork item's `widthMm`/`heightMm` are its LOCAL (pre-rotation) box
+ * size — `rotationDeg` then spins that box around its own center (see
+ * ArtworkLayer.tsx's `rotate()` transform). So above ~0/180°, the raw
+ * `widthMm` is no longer the item's actual footprint along the fabric's
+ * running-length axis (x), and `heightMm` is no longer its footprint across
+ * the tape-width axis (y) — comparing the unrotated fields directly against
+ * `repeat.lengthMm`/`spec.widthMm` silently ignores rotation. This computes
+ * the true axis-aligned footprint post-rotation so the repeat/width checks
+ * stay correct at any rotation the customer sets.
+ */
+function rotatedAxisExtents(transform: ArtworkTransform): { lengthMm: number; widthMm: number } {
+  const rad = (transform.rotationDeg * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  return {
+    lengthMm: transform.widthMm * cos + transform.heightMm * sin,
+    widthMm: transform.widthMm * sin + transform.heightMm * cos,
+  };
+}
+
 function checkJacquard(spec: JacquardSpec, cap: FamilyCapabilities, issues: WeavabilityIssue[]): void {
   checkContrast(spec.fg, spec.baseColor, 'motif', issues);
 
@@ -116,7 +138,11 @@ function checkJacquard(spec: JacquardSpec, cap: FamilyCapabilities, issues: Weav
           hint: `Consider increasing the text height to at least ${minText} mm.`,
         });
       }
-      if (h > spec.widthMm * 0.85) {
+      // "Too tall" is about the text's footprint ACROSS the fabric width once
+      // rotation is applied, not its raw (local, pre-rotation) heightMm —
+      // rotated text's on-fabric footprint mixes both local dimensions.
+      const { widthMm: extentAcrossWidth } = rotatedAxisExtents(item.transform);
+      if (extentAcrossWidth > spec.widthMm * 0.85) {
         issues.push({
           code: 'text-oversized',
           severity: 'warn',
@@ -126,19 +152,29 @@ function checkJacquard(spec: JacquardSpec, cap: FamilyCapabilities, issues: Weav
     }
 
     if (item.kind === 'image') {
-      if (item.transform.widthMm > spec.repeat.lengthMm) {
+      const { lengthMm: extentAlongLength, widthMm: extentAcrossWidth } = rotatedAxisExtents(item.transform);
+
+      if (extentAlongLength > spec.repeat.lengthMm) {
         issues.push({
           code: 'artwork-exceeds-repeat',
           severity: 'warn',
           message: 'Artwork is wider than the repeat length — it may overlap the next repeat.',
-          hint: 'Widen the repeat length or reduce the artwork width.',
+          hint: 'Widen the repeat length, reduce the artwork width, or reduce its rotation.',
         });
       }
-      if (spec.repeat.lengthMm < item.transform.widthMm + spec.repeat.spacingMm) {
+      if (spec.repeat.lengthMm < extentAlongLength + spec.repeat.spacingMm) {
         issues.push({
           code: 'repeat-dense',
           severity: 'info',
           message: 'Repeat length is tight relative to artwork size and spacing.',
+        });
+      }
+      if (extentAcrossWidth > spec.widthMm) {
+        issues.push({
+          code: 'artwork-exceeds-width',
+          severity: 'warn',
+          message: 'Artwork extends past the fabric width at this size and rotation.',
+          hint: 'Reduce the artwork size or rotation, or increase the fabric width.',
         });
       }
       // Pixel-level fine-detail analysis (downsampling the artwork image and
