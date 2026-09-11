@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, FolderOpen } from 'lucide-react';
 import { Badge } from '../components/ui/index';
+import HeroVideoBackground from '../components/HeroVideoBackground';
 import { COMPANY, FAMILY_BY_CODE, STUDIO_CARDS } from '../lib/constants';
 import { getStorageAdapter } from '../lib/storage/index';
 import { revisionLabel } from '../lib/ids';
@@ -44,6 +45,9 @@ export default function StudioSelect() {
     <div className="min-h-screen bg-slate-50">
       {/* Hero */}
       <section className="relative overflow-hidden bg-slate-950 px-6 py-16 sm:py-24">
+        {/* Homepage hero loop behind the header; the gradient keeps the left-aligned copy readable. */}
+        <HeroVideoBackground className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[72%_50%] opacity-50" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-transparent" />
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{

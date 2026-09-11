@@ -228,12 +228,6 @@ const HeroSlider = () => {
             >
               Design Studio
             </a>
-            <a
-              href="#contact"
-              className="px-8 py-4 bg-transparent hover:bg-white/10 text-white/80 rounded-lg font-bold transition-all text-center"
-            >
-              Contact Sales
-            </a>
           </div>
         </motion.div>
       </div>
