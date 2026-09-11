@@ -15,6 +15,7 @@ import { useCapabilities } from '../../lib/capabilities';
 import type { DesignSpec, JacquardSpec, KnittedSpec, PreviewMode, ProductionSpec, WovenSpec } from '../../lib/types';
 import { Badge, Button, Modal, TextArea } from '../../components/ui';
 import FabricPreview from '../../studio/preview/index';
+import WeaveGraphView from '../../studio/preview/WeaveGraphView';
 import { StudioLayout } from '../../studio/shell/StudioLayout';
 import { SpecSummaryPanel } from '../../studio/shell/SpecSummaryPanel';
 import { useDesignHistory } from '../../studio/shell/useDesignHistory';
@@ -26,11 +27,15 @@ import { LoomExportPanel } from './components/LoomExportPanel';
 import { ProductionSpecPanel } from './components/ProductionSpecPanel';
 import type { WeavabilityResult } from '../../lib/types';
 
-const MODES: { value: PreviewMode; label: string }[] = [
+/** Preview tabs — same as the customer studio; 'graph' is the jacquard weave graph, not a FabricPreview mode. */
+type StudioMode = PreviewMode | 'graph';
+
+const MODES: { value: StudioMode; label: string; jacquardOnly?: boolean }[] = [
   { value: 'flat', label: 'Flat' },
   { value: 'roll', label: 'Roll' },
   { value: 'repeat', label: 'Repeat' },
   { value: 'application', label: 'Application' },
+  { value: 'graph', label: 'Graph', jacquardOnly: true },
 ];
 
 function defaultsFor(family: DesignSpec['family']): DesignSpec {
@@ -127,7 +132,7 @@ function EditorWorkspace({
   onSaved: () => void;
 }) {
   const { spec, setSpec, undo, redo, canUndo, canRedo } = useDesignHistory(initialSpec);
-  const [mode, setMode] = useState<PreviewMode>('flat');
+  const [mode, setMode] = useState<StudioMode>('flat');
   const capabilities = useCapabilities();
   const [weavability, setWeavability] = useState<WeavabilityResult>(() => checkWeavability(initialSpec));
   const [saveOpen, setSaveOpen] = useState(false);
@@ -200,13 +205,13 @@ function EditorWorkspace({
         controls={<Controls spec={spec as JacquardSpec & WovenSpec & KnittedSpec} onChange={setSpec} />}
         preview={
           <div className="flex h-full min-h-0 flex-col gap-4">
-            <div className="flex rounded-lg border border-slate-200 bg-white p-1 self-start">
-              {MODES.map((m) => (
+            <div className="flex max-w-full self-start overflow-x-auto rounded-lg border border-slate-200 bg-white p-1">
+              {MODES.filter((m) => !m.jacquardOnly || spec.family === 'J').map((m) => (
                 <button
                   key={m.value}
                   type="button"
                   onClick={() => setMode(m.value)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+                  className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
                     mode === m.value ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'
                   }`}
                 >
@@ -215,15 +220,19 @@ function EditorWorkspace({
               ))}
             </div>
             <div className="flex min-h-0 flex-1">
-              <FabricPreview
-                spec={spec}
-                mode={mode}
-                showGrid
-                showRuler
-                interactive={spec.family === 'J'}
-                onSpecChange={setSpec}
-                className="w-full"
-              />
+              {mode === 'graph' && spec.family === 'J' ? (
+                <WeaveGraphView spec={spec as JacquardSpec} showGrid className="w-full" />
+              ) : (
+                <FabricPreview
+                  spec={spec}
+                  mode={mode === 'graph' ? 'flat' : mode}
+                  showGrid
+                  showRuler
+                  interactive={spec.family === 'J'}
+                  onSpecChange={setSpec}
+                  className="w-full"
+                />
+              )}
             </div>
           </div>
         }

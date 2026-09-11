@@ -326,6 +326,8 @@ export interface BuildLoomExportOptions {
   productionSpec: ProductionSpec | null;
   meta: { designCode: string; revisionNo: number; preparedBy: string };
   patternGridOverride?: { dataGridPng: string; previewPng: string; gridBmp: Blob };
+  /** Palette the (edited) graph was built with — e.g. declared yarns plus uploaded-logo colours. */
+  palette?: PaletteEntry[];
 }
 
 export interface PatternGridStatus {
@@ -363,7 +365,8 @@ export async function buildLoomExportZip(
         zip.file('pattern-grid.png', gridPng);
         zip.file('pattern-grid.bmp', gridBmp);
         zip.file('pattern-grid-preview.png', preview);
-        zip.file('color-key.csv', buildColorKeyCsv(buildJacquardPalette(j)));
+        const palette = opts.palette ?? buildJacquardPalette(j);
+        zip.file('color-key.csv', buildColorKeyCsv(palette));
         zip.file('operator-cad-validation.csv', buildValidationChecklistCsv(meta));
 
         const cols = Math.max(1, Math.round((j.repeat.lengthMm / 10) * picksPerCm));
@@ -392,7 +395,7 @@ export async function buildLoomExportZip(
             repeatLengthMm: j.repeat.lengthMm,
             repeatSpacingMm: j.repeat.spacingMm,
           },
-          palette: buildJacquardPalette(j),
+          palette,
           files: {
             'pattern-grid.png': { bytes: gridPng.size, sha256: await sha256(gridPng) },
             'pattern-grid.bmp': { bytes: gridBmp.size, sha256: await sha256(gridBmp) },

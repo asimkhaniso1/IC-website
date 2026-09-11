@@ -1,17 +1,58 @@
 /** Jacquard phase-one technical graph and Loom/CAD package controls. */
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
-import { CheckCircle2, Download, FileText, Grid3X3, Image, Loader2, Lock, Pencil, Redo2, RefreshCw, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  CheckCircle2, Columns2, Download, FileText, Grid3X3, Image, Loader2, Lock, Maximize2, Minimize2, Pencil, Redo2,
+  RefreshCw, Undo2, ZoomIn, ZoomOut,
+} from 'lucide-react';
 import { Badge, Button, Panel, Tooltip } from '../../../components/ui';
 import {
-  buildJacquardPalette, buildLoomExportZip, buildPatternGridPngs, canvasToBmpBlob,
-  downloadBlob, LoomExportError, parsePositiveDensity, type PatternGridStatus,
+  buildLoomExportZip, canvasToBmpBlob, downloadBlob, LoomExportError, parsePositiveDensity, type PatternGridStatus,
 } from '../../../lib/loomExport';
+import {
+  buildGraphPalette, buildJacquardPalette, buildPatternGridCanvas, NOMINAL_ENDS_PER_CM, NOMINAL_PICKS_PER_CM,
+  type PaletteEntry,
+} from '../../../lib/jacquardGraph';
 import { revisionLabel } from '../../../lib/ids';
 import { useCapabilities } from '../../../lib/capabilities';
 import type { DesignSpec, JacquardSpec, ProductionSpec } from '../../../lib/types';
 import { checkWeavability } from '../../../studio/weavability/rules';
 
-type Graph = { dataGridPng: string; cols: number; rows: number; sourceKey: string };
+type Graph = {
+  dataGridPng: string;
+  cols: number;
+  rows: number;
+  sourceKey: string;
+  /** Same palette as the customer's Graph tab (declared yarns + uploaded-logo colours). */
+  palette: PaletteEntry[];
+  /** The customer-facing graph at nominal density, for side-by-side comparison. */
+  customer: { dataUrl: string; cols: number; rows: number };
+};
+
+/** Zoom is screen pixels per fabric millimetre, so both graphs keep the fabric's true proportions. */
+const MAX_PX_PER_MM = 60;
+const CELL_LINE = 'rgba(100, 116, 139, 0.35)';
+const MAJOR_LINE = 'rgba(71, 85, 105, 0.75)';
+
+function gridLines(color: string, w: number, h: number) {
+  return {
+    backgroundImage: `linear-gradient(to right, ${color} 1px, transparent 1px), linear-gradient(to bottom, ${color} 1px, transparent 1px)`,
+    backgroundSize: `${w}px ${h}px`,
+  };
+}
+
+/** Thread lines (when cells are big enough) plus a bold line every 10 threads. */
+function GridOverlay({ boxW, boxH, cols, rows }: { boxW: number; boxH: number; cols: number; rows: number }) {
+  const cellW = boxW / cols;
+  const cellH = boxH / rows;
+  return (
+    <>
+      {Math.min(cellW, cellH) >= 3 && (
+        <div className="pointer-events-none absolute inset-0" style={gridLines(CELL_LINE, cellW, cellH)} />
+      )}
+      <div className="pointer-events-none absolute inset-0" style={gridLines(MAJOR_LINE, cellW * 10, cellH * 10)} />
+    </>
+  );
+}
 
 function dataUrlBlob(dataUrl: string): Blob {
   const [header, body] = dataUrl.split(',');
@@ -30,23 +71,31 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
   spec: DesignSpec; productionSpec: ProductionSpec | null; designCode: string; revisionNo: number; preparedBy: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<'generate' | 'export' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<PatternGridStatus | null>(null);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [editing, setEditing] = useState(false);
   const [colorIndex, setColorIndex] = useState(1);
-  const [zoom, setZoom] = useState(5);
+  const [zoom, setZoom] = useState(6);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [edited, setEdited] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [compare, setCompare] = useState(false);
+  const [hoverCell, setHoverCell] = useState<{ end: number; pick: number } | null>(null);
 
   const capabilities = useCapabilities();
   const jacquard = spec.family === 'J' ? spec as JacquardSpec : null;
   const approved = productionSpec?.status === 'approved';
   const endsPerCm = parsePositiveDensity(productionSpec?.details.endsPerCm);
   const picksPerCm = parsePositiveDensity(productionSpec?.details.picksPerCm);
-  const palette = jacquard ? buildJacquardPalette(jacquard) : [];
+  const palette = graph?.palette ?? (jacquard ? buildJacquardPalette(jacquard) : []);
+  const lengthMm = Math.max(1, jacquard?.repeat.lengthMm ?? 1);
+  const widthMm = Math.max(0.5, jacquard?.widthMm ?? 1);
+  const boxW = lengthMm * zoom;
+  const boxH = widthMm * zoom;
   const capabilityReview = checkWeavability(spec, capabilities[spec.family]);
   const familyCapability = capabilities[spec.family];
   const construction = productionSpec?.details.constructionType?.trim() ?? '';
@@ -87,28 +136,76 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
     image.src = graph.dataGridPng;
   }, [graph]);
 
+  /** Fits the whole graph (or both graphs, when comparing) into the visible area. */
+  function fitZoom() {
+    const el = viewportRef.current;
+    if (!el || !graph) return;
+    // A little slack so rounding never adds scrollbars (which would shift the centring).
+    let availW = el.clientWidth - 44;
+    let availH = el.clientHeight - 44;
+    if (compare) {
+      availW = availW / 2 - 12; // the two graphs sit side by side
+      availH -= 20; // room for their captions
+    }
+    const fit = Math.floor(Math.min(availW / lengthMm, availH / widthMm) * 10) / 10;
+    setZoom(Math.max(1, Math.min(MAX_PX_PER_MM, fit)));
+  }
+
+  useEffect(() => {
+    if (!graph) return;
+    const id = requestAnimationFrame(fitZoom);
+    return () => cancelAnimationFrame(id);
+  }, [graph, expanded, compare]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded]);
+
   async function generate() {
     if (!jacquard || !endsPerCm || !picksPerCm) return;
     setBusy('generate'); setError(null); setDone(null);
     try {
-      const result = await buildPatternGridPngs(jacquard, endsPerCm, picksPerCm);
-      setGraph({ dataGridPng: result.dataGridPng, cols: result.cols, rows: result.rows, sourceKey: graphSourceKey });
+      // Same palette as the customer's Graph tab, so both graphs show the same yarns.
+      const graphPalette = await buildGraphPalette(jacquard);
+      const raw = await buildPatternGridCanvas(jacquard, endsPerCm, picksPerCm, graphPalette);
+      const customerRaw = await buildPatternGridCanvas(jacquard, NOMINAL_ENDS_PER_CM, NOMINAL_PICKS_PER_CM, graphPalette);
+      setGraph({
+        dataGridPng: raw.toDataURL('image/png'), cols: raw.width, rows: raw.height, sourceKey: graphSourceKey,
+        palette: graphPalette,
+        customer: { dataUrl: customerRaw.toDataURL('image/png'), cols: customerRaw.width, rows: customerRaw.height },
+      });
       setEditing(false);
       setUndoStack([]); setRedoStack([]); setEdited(false);
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not generate the technical graph.'); }
     finally { setBusy(null); }
   }
 
+  function cellFromEvent(event: MouseEvent<HTMLCanvasElement>): { x: number; y: number } | null {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: Math.min(canvas.width - 1, Math.max(0, Math.floor((event.clientX - rect.left) * canvas.width / rect.width))),
+      y: Math.min(canvas.height - 1, Math.max(0, Math.floor((event.clientY - rect.top) * canvas.height / rect.height))),
+    };
+  }
+
   function editCell(event: MouseEvent<HTMLCanvasElement>, dragging = false) {
     if (!editing || !canvasRef.current || !palette[colorIndex] || (dragging && event.buttons !== 1)) return;
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.min(canvas.width - 1, Math.max(0, Math.floor((event.clientX - rect.left) * canvas.width / rect.width)));
-    const y = Math.min(canvas.height - 1, Math.max(0, Math.floor((event.clientY - rect.top) * canvas.height / rect.height)));
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.fillStyle = palette[colorIndex].hex; ctx.fillRect(x, y, 1, 1);
+    const cell = cellFromEvent(event);
+    const ctx = canvasRef.current.getContext('2d');
+    if (!cell || !ctx) return;
+    ctx.fillStyle = palette[colorIndex].hex; ctx.fillRect(cell.x, cell.y, 1, 1);
     setEdited(true);
+  }
+
+  function trackHover(event: MouseEvent<HTMLCanvasElement>) {
+    const cell = cellFromEvent(event);
+    // Rows run across the width (warp ends); columns run along the length (weft picks).
+    setHoverCell(cell ? { end: cell.y + 1, pick: cell.x + 1 } : null);
   }
 
   function beginStroke(event: MouseEvent<HTMLCanvasElement>) {
@@ -177,20 +274,23 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
     const artifacts = graphArtifacts();
     if (!artifacts || !graph) return;
     const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF({ orientation: graph.cols >= graph.rows ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    // True proportions: repeat length × fabric width in mm (cells aren't square when ends/cm ≠ picks/cm).
+    const doc = new jsPDF({ orientation: lengthMm >= widthMm ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
     doc.setFontSize(15); doc.text(`${designCode} ${revisionLabel(revisionNo)} — Jacquard Technical Graph`, 12, 14);
-    doc.setFontSize(9); doc.text(`${graph.rows} warp ends × ${graph.cols} weft picks | Ends/cm ${endsPerCm} | Picks/cm ${picksPerCm}`, 12, 20);
+    doc.setFontSize(9); doc.text(`${graph.rows} warp ends × ${graph.cols} weft picks | Ends/cm ${endsPerCm} | Picks/cm ${picksPerCm} | ${widthMm} mm × ${lengthMm} mm repeat`, 12, 20);
     const pageW = doc.internal.pageSize.getWidth() - 24;
     const pageH = doc.internal.pageSize.getHeight() - 34;
-    const ratio = Math.min(pageW / graph.cols, pageH / graph.rows);
-    doc.addImage(artifacts.previewPng, 'PNG', 12, 26, graph.cols * ratio, graph.rows * ratio);
+    const ratio = Math.min(pageW / lengthMm, pageH / widthMm);
+    doc.addImage(artifacts.previewPng, 'PNG', 12, 26, lengthMm * ratio, widthMm * ratio);
     doc.save(`${designCode}-${revisionLabel(revisionNo)}-technical-graph.pdf`);
   }
 
   async function handleExport() {
     setError(null); setBusy('export'); setDone(null);
     try {
-      const result = await buildLoomExportZip({ spec, productionSpec, meta: { designCode, revisionNo, preparedBy }, patternGridOverride: graphArtifacts() });
+      const result = await buildLoomExportZip({
+        spec, productionSpec, meta: { designCode, revisionNo, preparedBy }, patternGridOverride: graphArtifacts(), palette: graph?.palette,
+      });
       downloadBlob(result.blob, result.filename); setDone(result.patternGrid);
     } catch (err) { setError(err instanceof LoomExportError || err instanceof Error ? err.message : 'Could not generate the export.'); }
     finally { setBusy(null); }
@@ -201,7 +301,7 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
       <div className="flex flex-col gap-3">
         <div>
           <p className="text-sm font-bold text-slate-800">Jacquard Technical Graph <Badge tone="brand">Phase 1</Badge></p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">Converts approved artwork and production densities into a discrete warp-end × weft-pick graph. Each cell is one declared yarn color.</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">Converts approved artwork and production densities into a discrete warp-end × weft-pick graph. Each cell is one yarn color — the same palette the customer sees, including uploaded-logo colors.</p>
         </div>
         <div className={`rounded-lg border px-3 py-2.5 ${capabilityCompliant ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
           <div className="flex items-center justify-between gap-2">
@@ -225,31 +325,78 @@ export function LoomExportPanel({ spec, productionSpec, designCode, revisionNo, 
             {graph ? 'Regenerate' : 'Generate Technical Graph'}
           </Button>
           {graph && <Button size="sm" variant={editing ? 'primary' : 'secondary'} onClick={() => setEditing((v) => !v)}><Pencil className="w-3.5 h-3.5" /> Edit Grid</Button>}
+          {graph && <Button size="sm" variant="secondary" onClick={() => setExpanded(true)}><Maximize2 className="w-3.5 h-3.5" /> Open full graph</Button>}
         </div>
 
         {graph && <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
-            <span><b className="text-slate-700">{graph.rows}</b> warp ends × <b className="text-slate-700">{graph.cols}</b> weft picks {edited && <Badge tone="amber">Edited</Badge>}</span>
-            {editing && <span>Choose a yarn color, then click cells to edit.</span>}
-          </div>
-          {editing && <div className="mb-2 flex flex-wrap items-center gap-1.5">{palette.map((entry, index) => <button key={entry.hex} type="button" onClick={() => setColorIndex(index)} title={`${entry.role}: ${entry.label}`} aria-label={`Use ${entry.role} color ${entry.label}`} className={`h-8 w-8 rounded border-2 ${colorIndex === index ? 'border-brand-600 ring-2 ring-brand-200' : 'border-white'}`} style={{ backgroundColor: entry.hex }} />)}<span className="ml-2 text-xs font-medium text-slate-600">Painting: {palette[colorIndex]?.role} — {palette[colorIndex]?.label}</span></div>}
-          {editing && <div className="mb-2 flex flex-wrap items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={undoEdit} disabled={!undoStack.length}><Undo2 className="w-3.5 h-3.5" /> Undo</Button>
-            <Button size="sm" variant="ghost" onClick={redoEdit} disabled={!redoStack.length}><Redo2 className="w-3.5 h-3.5" /> Redo</Button>
-            <Button size="sm" variant="ghost" onClick={resetEdits} disabled={!edited}><RefreshCw className="w-3.5 h-3.5" /> Reset edits</Button>
-            <span className="mx-1 h-5 border-l border-slate-300" />
-            <Button size="sm" variant="ghost" onClick={() => setZoom((value) => Math.max(2, value - 1))}><ZoomOut className="w-3.5 h-3.5" /></Button>
-            <span className="min-w-10 text-center text-xs font-medium text-slate-600">{zoom}×</span>
-            <Button size="sm" variant="ghost" onClick={() => setZoom((value) => Math.min(16, value + 1))}><ZoomIn className="w-3.5 h-3.5" /></Button>
-          </div>}
-          <div className="max-h-96 overflow-auto rounded border border-slate-300 bg-white p-2">
-            <canvas
-              ref={canvasRef}
-              onMouseDown={beginStroke}
-              onMouseMove={(event) => editCell(event, true)}
-              className={`mx-auto max-w-none select-none border border-slate-300 [image-rendering:pixelated] ${editing ? 'cursor-crosshair touch-none' : ''}`}
-              style={{ width: `${graph.cols * zoom}px`, height: `${graph.rows * zoom}px` }}
-            />
+          {/* One canvas serves the inline view and the full-screen editor, so edits survive switching between them. */}
+          <div
+            className={expanded ? 'fixed inset-0 z-50 flex flex-col gap-2 bg-slate-100 p-4' : 'flex flex-col gap-2'}
+            role={expanded ? 'dialog' : undefined}
+            aria-modal={expanded ? true : undefined}
+            aria-label={expanded ? 'Jacquard technical graph editor' : undefined}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {expanded && <b className="text-sm text-slate-800">{designCode} {revisionLabel(revisionNo)} — Technical Graph</b>}
+                <span>
+                  <b className="text-slate-700">{graph.rows}</b> warp ends × <b className="text-slate-700">{graph.cols}</b> weft picks · {endsPerCm} ends/cm × {picksPerCm} picks/cm
+                </span>
+                {edited && <Badge tone="amber">Edited</Badge>}
+                {hoverCell && <span className="font-mono text-slate-600">End {hoverCell.end} · Pick {hoverCell.pick}</span>}
+              </span>
+              <div className="flex flex-wrap items-center gap-1">
+                {expanded && <Button size="sm" variant={editing ? 'primary' : 'secondary'} onClick={() => setEditing((v) => !v)}><Pencil className="w-3.5 h-3.5" /> Edit Grid</Button>}
+                <Button size="sm" variant={compare ? 'primary' : 'secondary'} onClick={() => setCompare((v) => !v)}><Columns2 className="w-3.5 h-3.5" /> Compare with customer graph</Button>
+                <Button size="sm" variant="ghost" onClick={() => setZoom((z) => Math.max(1, z / 1.25))} aria-label="Zoom out"><ZoomOut className="w-3.5 h-3.5" /></Button>
+                <span className="min-w-16 text-center text-xs font-medium text-slate-600">{zoom.toFixed(1)} px/mm</span>
+                <Button size="sm" variant="ghost" onClick={() => setZoom((z) => Math.min(MAX_PX_PER_MM, z * 1.25))} aria-label="Zoom in"><ZoomIn className="w-3.5 h-3.5" /></Button>
+                <Button size="sm" variant="ghost" onClick={fitZoom}>Fit</Button>
+                {expanded && <Button size="sm" variant="secondary" onClick={() => setExpanded(false)}><Minimize2 className="w-3.5 h-3.5" /> Close</Button>}
+              </div>
+            </div>
+            {editing && <div className="flex flex-wrap items-center gap-1.5">{palette.map((entry, index) => <button key={entry.hex} type="button" onClick={() => setColorIndex(index)} title={`${entry.role}: ${entry.label}`} aria-label={`Use ${entry.role} color ${entry.label}`} className={`h-8 w-8 rounded border-2 ${colorIndex === index ? 'border-brand-600 ring-2 ring-brand-200' : 'border-white'}`} style={{ backgroundColor: entry.hex }} />)}<span className="ml-2 text-xs font-medium text-slate-600">Painting: {palette[colorIndex]?.role} — {palette[colorIndex]?.label}</span></div>}
+            {editing && <div className="flex flex-wrap items-center gap-1">
+              <Button size="sm" variant="ghost" onClick={undoEdit} disabled={!undoStack.length}><Undo2 className="w-3.5 h-3.5" /> Undo</Button>
+              <Button size="sm" variant="ghost" onClick={redoEdit} disabled={!redoStack.length}><Redo2 className="w-3.5 h-3.5" /> Redo</Button>
+              <Button size="sm" variant="ghost" onClick={resetEdits} disabled={!edited}><RefreshCw className="w-3.5 h-3.5" /> Reset edits</Button>
+              <span className="ml-1 text-xs text-slate-500">Choose a yarn color, then click or drag across cells.</span>
+            </div>}
+            <div ref={viewportRef} className={`relative flex overflow-auto rounded border border-slate-300 bg-white p-4 ${expanded ? 'min-h-0 flex-1' : 'h-96'}`}>
+              <div className={`m-auto flex shrink-0 gap-6 ${compare ? 'flex-row items-start' : 'flex-col items-center'}`}>
+                {compare && (
+                  <figure className="flex flex-col gap-1">
+                    <figcaption className="text-[11px] font-medium text-slate-500">
+                      Customer graph — nominal {NOMINAL_ENDS_PER_CM} ends/cm × {NOMINAL_PICKS_PER_CM} picks/cm ({graph.customer.rows} × {graph.customer.cols})
+                    </figcaption>
+                    <div className="relative bg-white ring-1 ring-slate-400" style={{ width: boxW, height: boxH }}>
+                      <img src={graph.customer.dataUrl} alt="Customer-facing weave graph" className="block h-full w-full [image-rendering:pixelated]" />
+                      <GridOverlay boxW={boxW} boxH={boxH} cols={graph.customer.cols} rows={graph.customer.rows} />
+                    </div>
+                  </figure>
+                )}
+                <figure className="flex flex-col gap-1">
+                  {compare && (
+                    <figcaption className="text-[11px] font-medium text-slate-500">
+                      Technical graph — approved {endsPerCm} ends/cm × {picksPerCm} picks/cm ({graph.rows} × {graph.cols}){edited ? ' · edited' : ''}
+                    </figcaption>
+                  )}
+                  <div className="relative bg-white ring-1 ring-slate-400" style={{ width: boxW, height: boxH }}>
+                    <canvas
+                      ref={canvasRef}
+                      onMouseDown={beginStroke}
+                      onMouseMove={(event) => { trackHover(event); editCell(event, true); }}
+                      onMouseLeave={() => setHoverCell(null)}
+                      className={`block h-full w-full select-none [image-rendering:pixelated] ${editing ? 'cursor-crosshair touch-none' : ''}`}
+                    />
+                    <GridOverlay boxW={boxW} boxH={boxH} cols={graph.cols} rows={graph.rows} />
+                  </div>
+                </figure>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Shown in true proportion ({widthMm} mm width × {lengthMm} mm repeat) · bold lines every 10 threads{expanded ? ' · Esc to close — edits are kept' : ''}
+            </p>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" variant="ghost" onClick={() => downloadGraph('png')}><Image className="w-3.5 h-3.5" /> PNG</Button>

@@ -30,10 +30,10 @@ const MIN_CELL_FOR_LINES = 3;
 const CELL_LINE = 'rgba(100, 116, 139, 0.35)';
 const MAJOR_LINE = 'rgba(71, 85, 105, 0.75)';
 
-function gridLines(color: string, sizePx: number) {
+function gridLines(color: string, w: number, h: number) {
   return {
     backgroundImage: `linear-gradient(to right, ${color} 1px, transparent 1px), linear-gradient(to bottom, ${color} 1px, transparent 1px)`,
-    backgroundSize: `${sizePx}px ${sizePx}px`,
+    backgroundSize: `${w}px ${h}px`,
   };
 }
 
@@ -92,12 +92,19 @@ export default function WeaveGraphView({
     };
   }, [spec]);
 
-  const fitCell = Math.max(
-    0.5,
-    Math.min((stage.w - STAGE_PAD * 2) / cols, (stage.h - STAGE_PAD * 2) / rows)
+  // True proportions: the box is the repeat length × fabric width in mm, so cells
+  // are rectangles when ends/cm and picks/cm differ (same as the technical graph).
+  const lengthMm = Math.max(1, spec.repeat.lengthMm);
+  const widthMm = Math.max(0.5, spec.widthMm);
+  const fitPxPerMm = Math.max(
+    0.1,
+    Math.min((stage.w - STAGE_PAD * 2) / lengthMm, (stage.h - STAGE_PAD * 2) / widthMm)
   );
-  const cellPx = fitCell * zoom;
-  const threadLinesVisible = showGrid && cellPx >= MIN_CELL_FOR_LINES;
+  const boxW = lengthMm * fitPxPerMm * zoom;
+  const boxH = widthMm * fitPxPerMm * zoom;
+  const cellW = boxW / cols;
+  const cellH = boxH / rows;
+  const threadLinesVisible = showGrid && Math.min(cellW, cellH) >= MIN_CELL_FOR_LINES;
   const zoomIn = () => setZoom((z) => Math.min(12, z * 1.5));
   const zoomOut = () => setZoom((z) => Math.max(1, z / 1.5));
 
@@ -158,7 +165,7 @@ export default function WeaveGraphView({
       <div ref={stageRef} className="relative flex min-h-96 flex-1 overflow-auto">
         <div
           className="relative m-auto shrink-0 border border-slate-400 bg-white shadow-sm"
-          style={{ width: cols * cellPx, height: rows * cellPx }}
+          style={{ width: boxW, height: boxH }}
         >
           <canvas
             ref={canvasRef}
@@ -167,10 +174,10 @@ export default function WeaveGraphView({
             role="img"
           />
           {threadLinesVisible && (
-            <div className="pointer-events-none absolute inset-0" style={gridLines(CELL_LINE, cellPx)} />
+            <div className="pointer-events-none absolute inset-0" style={gridLines(CELL_LINE, cellW, cellH)} />
           )}
           {showGrid && (
-            <div className="pointer-events-none absolute inset-0" style={gridLines(MAJOR_LINE, cellPx * 10)} />
+            <div className="pointer-events-none absolute inset-0" style={gridLines(MAJOR_LINE, cellW * 10, cellH * 10)} />
           )}
         </div>
         {(error || spec.artwork.length === 0) && (

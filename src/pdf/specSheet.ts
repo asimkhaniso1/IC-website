@@ -899,9 +899,13 @@ async function drawWeaveGraph(doc: jsPDF, y: number, spec: DesignSpec): Promise<
   const maxW = 170;
   const maxH = 105;
   const pad = 4;
-  const fit = Math.min((maxW - pad * 2) / cols, (maxH - pad * 2) / rows);
-  const imgW = cols * fit;
-  const imgH = rows * fit;
+  // True proportions: repeat length × fabric width in mm (cells aren't square
+  // when ends/cm and picks/cm differ) — same as the studio and technical graphs.
+  const lengthMm = Math.max(1, j.repeat.lengthMm);
+  const widthMm = Math.max(0.5, j.widthMm);
+  const fit = Math.min((maxW - pad * 2) / lengthMm, (maxH - pad * 2) / widthMm);
+  const imgW = lengthMm * fit;
+  const imgH = widthMm * fit;
   const boxH = imgH + pad * 2;
   const keyRows = Math.ceil(palette.length / 3);
 
