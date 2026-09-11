@@ -365,8 +365,6 @@ export interface RfqDialogProps {
   aiReview?: AiReviewResult;
   /** Latest AI photorealistic render (data URL), included in the spec PDF when present. */
   aiPhoto?: string;
-  /** Nominal jacquard weave-graph density from the Manufacturing Capability Library, for the attached spec PDF's Weave Graph section. */
-  nominalDensity?: { endsPerCm: number; picksPerCm: number };
   open: boolean;
   onClose(): void;
 }

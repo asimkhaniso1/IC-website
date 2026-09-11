@@ -27,13 +27,6 @@ import { revisionLabel } from '../lib/ids';
 import { mmToIn } from '../lib/units';
 import { hexToRgb } from '../lib/color';
 import { describeColor } from '../studio/color/naming';
-import {
-  buildGraphPalette,
-  buildPatternGridCanvas,
-  niceRulerStep,
-  renderGraphPng,
-  type PaletteEntry,
-} from '../lib/jacquardGraph';
 import { qrDataUrl } from './qr';
 
 /** "standard" → "Standard" for cleaner presentation of enum-ish values. */
@@ -101,8 +94,8 @@ function safeRgb(hex: string | undefined): [number, number, number] {
 }
 
 function sectionHeader(doc: jsPDF, y: number, title: string): number {
-  y = pageBreakIfNeeded(doc, y, 14);
-  y += 4;
+  y = pageBreakIfNeeded(doc, y, 12);
+  y += 3;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.5);
   doc.setTextColor(...BRAND);
@@ -110,7 +103,7 @@ function sectionHeader(doc: jsPDF, y: number, title: string): number {
   doc.setDrawColor(...BRAND);
   doc.setLineWidth(0.5);
   doc.line(CONTENT_X, y + 1.6, CONTENT_X + CONTENT_W, y + 1.6);
-  return y + 7;
+  return y + 5.5;
 }
 
 function rowDivider(doc: jsPDF, y: number): void {
@@ -130,7 +123,7 @@ function kvRow(doc: jsPDF, y: number, label: string, value: string): number {
   doc.setTextColor(...SLATE_900);
   const lines = doc.splitTextToSize(value && value.trim() ? value : '—', VALUE_W) as string[];
   doc.text(lines, VALUE_X, y);
-  const rowH = Math.max(6, lines.length * 4.2) + 2.4;
+  const rowH = Math.max(6, lines.length * 4.2) + 1.6;
   rowDivider(doc, y + rowH - 1.6);
   return y + rowH;
 }
@@ -151,7 +144,7 @@ function colorRow(doc: jsPDF, y: number, label: string, hex?: string): number {
   doc.setFontSize(9.5);
   doc.setTextColor(...SLATE_900);
   doc.text(colorReferenceText(hex), VALUE_X + 7, y);
-  const rowH = 7.6;
+  const rowH = 7;
   rowDivider(doc, y + rowH - 1.6);
   return y + rowH;
 }
@@ -172,7 +165,7 @@ function additionalColorsRow(doc: jsPDF, y: number, colors: string[] | undefined
     doc.rect(cx, top, 4.4, 4.4, 'FD');
     cx += 6.6;
   });
-  const rowH = 7.6;
+  const rowH = 7;
   rowDivider(doc, y + rowH - 1.6);
   return y + rowH;
 }
@@ -710,14 +703,16 @@ function drawProductionSpecBlank(doc: jsPDF, y: number): number {
       'requirements, not approved manufacturing parameters.',
     CONTENT_W
   ) as string[];
-  y = pageBreakIfNeeded(doc, y, noteLines.length * 3.4 + 8);
+  y = pageBreakIfNeeded(doc, y, noteLines.length * 3.4 + 6);
   doc.text(noteLines, CONTENT_X, y);
-  y += noteLines.length * 3.4 + 5;
+  y += noteLines.length * 3.4 + 3.5;
 
-  const cols = 2;
-  const gap = 8;
-  const colW = (CONTENT_W - gap) / cols;
-  const rowH = 12;
+  // 3 columns instead of 2 — this is a blank checklist for staff to fill by
+  // hand, not customer content, so it can run denser than the spec table.
+  const cols = 3;
+  const gap = 6;
+  const colW = (CONTENT_W - gap * (cols - 1)) / cols;
+  const rowH = 9.5;
   const rows = Math.ceil(PRODUCTION_SPEC_BLANK_FIELDS.length / cols);
   y = pageBreakIfNeeded(doc, y, rows * rowH + 4);
 
@@ -727,12 +722,12 @@ function drawProductionSpecBlank(doc: jsPDF, y: number): number {
     const x = CONTENT_X + col * (colW + gap);
     const ty = y + row * rowH;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.4);
+    doc.setFontSize(6.8);
     doc.setTextColor(...SLATE_500);
     doc.text(label.toUpperCase(), x, ty);
     doc.setDrawColor(...SLATE_300);
     doc.setLineWidth(0.25);
-    doc.line(x, ty + 6.5, x + colW, ty + 6.5);
+    doc.line(x, ty + 5.4, x + colW, ty + 5.4);
   });
 
   return y + rows * rowH + 3;
@@ -743,12 +738,12 @@ function drawProductionSpecBlank(doc: jsPDF, y: number): number {
 // ---------------------------------------------------------------------------
 
 async function drawClosing(doc: jsPDF, y: number, rec: DesignRecord): Promise<number> {
-  const blockH = 66;
+  const blockH = 58;
   y = pageBreakIfNeeded(doc, y, blockH);
   y += 3;
 
   const qrSize = 22;
-  const refBoxH = qrSize + 8;
+  const refBoxH = qrSize + 6;
   const slug = FAMILY_BY_CODE[rec.family]?.slug ?? 'design';
   const url = `${COMPANY.website}/studio/${slug}/${rec.id}`;
   let qr: string | null = null;
@@ -786,27 +781,28 @@ async function drawClosing(doc: jsPDF, y: number, rec: DesignRecord): Promise<nu
     doc.rect(qrX, y + (refBoxH - qrSize) / 2, qrSize, qrSize);
   }
 
-  const sigY = y + refBoxH + 8;
+  const sigY = y + refBoxH + 6;
   const gap = 5;
+  const boxH = 17;
   const boxW = (CONTENT_W - gap * 2) / 3;
   const labels = ['Prepared By', 'Reviewed By', 'Approved By'];
   labels.forEach((label, i) => {
     const x = CONTENT_X + i * (boxW + gap);
     doc.setDrawColor(...SLATE_300);
     doc.setLineWidth(0.3);
-    doc.rect(x, sigY, boxW, 22);
+    doc.rect(x, sigY, boxW, boxH);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.4);
     doc.setTextColor(...SLATE_500);
-    doc.text(label.toUpperCase(), x + 3, sigY + 5.5);
+    doc.text(label.toUpperCase(), x + 3, sigY + 5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.4);
     doc.setTextColor(...SLATE_600);
-    doc.text('Name: ________________', x + 3, sigY + 13);
-    doc.text('Date: ________________', x + 3, sigY + 19);
+    doc.text('Name: ________________', x + 3, sigY + 10.5);
+    doc.text('Date: ________________', x + 3, sigY + 15.5);
   });
 
-  return sigY + 22 + 4;
+  return sigY + boxH + 4;
 }
 
 function stampFooters(doc: jsPDF): void {
@@ -836,16 +832,7 @@ export interface SpecPdfExtras {
   aiReview?: AiReviewResult;
   /** Latest AI photorealistic render (data URL) — printed as an indicative visualization. */
   aiPhoto?: string;
-  /**
-   * Nominal jacquard weave-graph density from the live Manufacturing
-   * Capability Library. Falls back to the library's own offline default
-   * (40 ends/cm × 30 picks/cm) when the caller can't resolve it — e.g. a
-   * context with no `useCapabilities()` — so the graph is never skipped.
-   */
-  nominalDensity?: { endsPerCm: number; picksPerCm: number };
 }
-
-const FALLBACK_NOMINAL_DENSITY = { endsPerCm: 40, picksPerCm: 30 };
 
 export async function generateSpecPdf(
   rec: DesignRecord,
@@ -861,7 +848,9 @@ export async function generateSpecPdf(
   if (extras?.aiPhoto) {
     y = await drawAiPhoto(doc, y, extras.aiPhoto);
   }
-  y = await drawWeaveGraph(doc, y, rec.spec, extras?.nominalDensity ?? FALLBACK_NOMINAL_DENSITY);
+  // The technical jacquard weave graph is deliberately NOT included here —
+  // it's a production/loom artifact for the technical team (see
+  // LoomExportPanel), not something a customer-facing quotation needs.
   y = drawSpecTable(doc, y, rec.spec);
   y = drawCustomerTechnicalInput(doc, y, rec.spec.technical);
   y = drawWeavability(doc, y, rec.weavability);
@@ -874,128 +863,6 @@ export async function generateSpecPdf(
   stampFooters(doc);
 
   return doc.output('blob');
-}
-
-// ---------------------------------------------------------------------------
-// Jacquard weave graph — same grid, palette and nominal density as the
-// studio's Graph tab, so the sheet and the screen always agree.
-// ---------------------------------------------------------------------------
-
-const WEAVE_GRAPH_CAPTION =
-  'Indicative weave graph — one square per warp end × weft pick at nominal density. Uploaded logos keep their own colours. ' +
-  'The Interconverters technical team prepares the final loom graph from the approved production specification.';
-
-/** Space reserved for the ruler ticks/labels along the top and left of the graph image, in mm on the page. */
-const GRAPH_RULER_MM = 7;
-
-/** Draws mm tick marks + labels along the top (length) and left (width) edges of an image already placed at (imgX, imgY). */
-function drawGraphRuler(doc: jsPDF, imgX: number, imgY: number, lengthMm: number, widthMm: number, fit: number): void {
-  const minorStep = niceRulerStep(fit, 1.2);
-  const labelStep = niceRulerStep(fit, 9);
-  doc.setDrawColor(...SLATE_400);
-  doc.setLineWidth(0.15);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(4.6);
-  doc.setTextColor(...SLATE_500);
-  for (let m = 0; m <= lengthMm; m += minorStep) {
-    const x = imgX + m * fit;
-    const major = m % labelStep === 0;
-    doc.line(x, imgY - (major ? 1.8 : 0.9), x, imgY);
-    if (major) doc.text(String(m), x, imgY - 2.1, { align: 'center' });
-  }
-  for (let m = 0; m <= widthMm; m += minorStep) {
-    const yy = imgY + m * fit;
-    const major = m % labelStep === 0;
-    doc.line(imgX - (major ? 1.8 : 0.9), yy, imgX, yy);
-    if (major) doc.text(String(m), imgX - 2.1, yy + 0.6, { align: 'right' });
-  }
-}
-
-async function drawWeaveGraph(
-  doc: jsPDF,
-  y: number,
-  spec: DesignSpec,
-  nominalDensity: { endsPerCm: number; picksPerCm: number }
-): Promise<number> {
-  if (spec.family !== 'J') return y;
-  const j = spec as JacquardSpec;
-  if (j.artwork.length === 0) return y;
-
-  let png: string;
-  let cols: number;
-  let rows: number;
-  let palette: PaletteEntry[];
-  try {
-    palette = await buildGraphPalette(j);
-    const raw = await buildPatternGridCanvas(j, nominalDensity.endsPerCm, nominalDensity.picksPerCm, palette);
-    cols = raw.width;
-    rows = raw.height;
-    png = renderGraphPng(raw);
-  } catch {
-    return y; // skip the section rather than print a broken frame
-  }
-
-  const maxW = 170;
-  const maxH = 105;
-  const pad = 4;
-  // True proportions: repeat length × fabric width in mm (cells aren't square
-  // when ends/cm and picks/cm differ) — same as the studio and technical graphs.
-  const lengthMm = Math.max(1, j.repeat.lengthMm);
-  const widthMm = Math.max(0.5, j.widthMm);
-  const availW = maxW - pad * 2 - GRAPH_RULER_MM;
-  const availH = maxH - pad * 2 - GRAPH_RULER_MM;
-  const fit = Math.min(availW / lengthMm, availH / widthMm);
-  const imgW = lengthMm * fit;
-  const imgH = widthMm * fit;
-  const boxH = imgH + pad * 2 + GRAPH_RULER_MM;
-  const keyRows = Math.ceil(palette.length / 3);
-
-  // Keep header, graph and key together on one page.
-  y = pageBreakIfNeeded(doc, y, boxH + keyRows * 4.5 + 34);
-  y = sectionHeader(doc, y, 'Weave Graph');
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...SLATE_600);
-  const stats = doc.splitTextToSize(
-    `${rows} warp ends × ${cols} weft picks  ·  one ${j.repeat.lengthMm} mm repeat  ·  nominal ` +
-      `${nominalDensity.endsPerCm} ends/cm × ${nominalDensity.picksPerCm} picks/cm  ·  bold lines every 10 threads`,
-    CONTENT_W
-  ) as string[];
-  doc.text(stats, CONTENT_X, y);
-  y += stats.length * 3.6 + 1;
-
-  const boxX = CONTENT_X + (CONTENT_W - maxW) / 2;
-  doc.setDrawColor(...SLATE_300);
-  doc.setLineWidth(0.3);
-  doc.setFillColor(255, 255, 255);
-  doc.rect(boxX, y, maxW, boxH, 'FD');
-  const imgX = boxX + GRAPH_RULER_MM + pad + (availW - imgW) / 2;
-  const imgY = y + GRAPH_RULER_MM + pad + (availH - imgH) / 2;
-  doc.addImage(png, 'PNG', imgX, imgY, imgW, imgH);
-  drawGraphRuler(doc, imgX, imgY, lengthMm, widthMm, fit);
-  y += boxH + 5;
-
-  const colW = CONTENT_W / 3;
-  palette.forEach((entry, i) => {
-    const lx = CONTENT_X + (i % 3) * colW;
-    const ly = y + Math.floor(i / 3) * 4.5;
-    doc.setFillColor(...safeRgb(entry.hex));
-    doc.setDrawColor(...SLATE_300);
-    doc.rect(lx, ly - 2.6, 3, 3, 'FD');
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.6);
-    doc.setTextColor(...SLATE_900);
-    doc.text(`${entry.role} — ${entry.label}`, lx + 4.5, ly, { maxWidth: colW - 6 });
-  });
-  y += keyRows * 4.5 + 1.5;
-
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(6.6);
-  doc.setTextColor(...SLATE_400);
-  const capLines = doc.splitTextToSize(WEAVE_GRAPH_CAPTION, CONTENT_W) as string[];
-  doc.text(capLines, CONTENT_X, y);
-  return y + capLines.length * 3.1 + 5;
 }
 
 // ---------------------------------------------------------------------------

@@ -55,7 +55,7 @@ async function downloadSpecPdf(
   spec: DesignSpec,
   weavability: RfqDialogProps['design']['weavability'],
   previewPng: string,
-  extras?: { aiReview?: RfqDialogProps['aiReview']; aiPhoto?: string; nominalDensity?: RfqDialogProps['nominalDensity'] }
+  extras?: { aiReview?: RfqDialogProps['aiReview']; aiPhoto?: string }
 ) {
   const blob = await generateSpecPdf(
     {
@@ -87,7 +87,6 @@ export const RfqDialog: React.FC<RfqDialogProps> = ({
   previewPng,
   aiReview,
   aiPhoto,
-  nominalDensity,
   open,
   onClose,
 }) => {
@@ -186,7 +185,6 @@ export const RfqDialog: React.FC<RfqDialogProps> = ({
       await downloadSpecPdf(design.id, design.designCode, design.spec, design.weavability, previewPng ?? '', {
         aiReview,
         aiPhoto,
-        nominalDensity,
       });
     } catch {
       // best-effort — surface nothing fatal, user can retry

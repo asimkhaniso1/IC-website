@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { Badge, Button, Modal, TextInput } from '../../components/ui/index';
 import { COMPANY } from '../../lib/constants';
-import { useCapabilities } from '../../lib/capabilities';
 import { revisionLabel } from '../../lib/ids';
 import { getStorageAdapter } from '../../lib/storage/index';
 import type { AiReviewResult, DesignRecord, DesignSpec, PreviewHandle, WeavabilityResult } from '../../lib/types';
@@ -60,8 +59,6 @@ export function TopBar({
   const [resetOpen, setResetOpen] = useState(false);
   const [rfqDesign, setRfqDesign] = useState<DesignRecord | null>(null);
   const [rfqPreviewPng, setRfqPreviewPng] = useState<string | undefined>();
-  const capabilities = useCapabilities();
-  const nominalDensity = { endsPerCm: capabilities.J.nominalEndsPerCm, picksPerCm: capabilities.J.nominalPicksPerCm };
 
   const flash = (tone: 'ok' | 'error', text: string) => {
     setFeedback({ tone, text });
@@ -92,7 +89,7 @@ export function TopBar({
       const rec = record ?? (await persist());
       const png = await pdfPreviewRef.current?.toPngDataUrl(3);
       if (!png) throw new Error('Preview is not ready yet — please try again.');
-      const blob = await generateSpecPdf(rec, png, { aiReview, aiPhoto, nominalDensity });
+      const blob = await generateSpecPdf(rec, png, { aiReview, aiPhoto });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -215,7 +212,6 @@ export function TopBar({
           previewPng={rfqPreviewPng}
           aiReview={aiReview}
           aiPhoto={aiPhoto}
-          nominalDensity={nominalDensity}
           open={!!rfqDesign}
           onClose={() => setRfqDesign(null)}
         />
